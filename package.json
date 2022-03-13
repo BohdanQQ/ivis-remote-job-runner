@@ -1,0 +1,30 @@
+{
+  "name": "ivis-remote-job-runner",
+  "version": "0.0.1",
+  "description": "A remote job runner which enables ivis-core to run jobs on remotely accessible machines.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BohdanQQ/ivis-remote-job-runner.git"
+  },
+  "keywords": [
+    "ivis",
+    "ivis-core",
+    "\"remote",
+    "job\""
+  ],
+  "author": "Roman Vasut",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BohdanQQ/ivis-remote-job-runner/issues"
+  },
+  "homepage": "https://github.com/BohdanQQ/ivis-remote-job-runner#readme",
+  "dependencies": {
+    "config": "^3.3.7",
+    "express": "^4.17.3",
+    "js-yaml": "^4.1.0"
+  }
+}

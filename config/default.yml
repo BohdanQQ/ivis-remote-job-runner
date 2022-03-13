@@ -1,0 +1,10 @@
+ivisCore:
+  useHttps: false
+  hostName: the.name.of.ivis.instance
+  trustedPort: 8080
+  publicKeyPath: /opt/ivis-remote-job-runner/IVISkey.pub
+
+jobRunner:
+  privateKeyPath: /opt/ivis-remove-job-runner/RunnerPrivateKey
+  hostName: localhost
+  port: 8888
