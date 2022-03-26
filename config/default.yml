@@ -1,10 +1,14 @@
 ivisCore:
-  useHttps: false
-  hostName: the.name.of.ivis.instance
-  trustedPort: 8080
-  publicKeyPath: /opt/ivis-remote-job-runner/IVISkey.pub
+  hostIPOrName: 0.0.0.0
+  ivisTLSPort: 8080
+  ivisElasticSearchPort: 9200
+  CACert: ./certs/ca.crt
+  venvCmd: 'python3 -m venv'
 
 jobRunner:
-  privateKeyPath: /opt/ivis-remove-job-runner/RunnerPrivateKey
-  hostName: localhost
-  port: 8888
+  serverCertificatePath: ./certs/srv.crt
+  serverCertificateKeyPath: ./certs/srv.key
+  clientCertificatePath: ./certs/client.crt
+  clientCertificateKey: ./certs/client.key
+  port: 443
+  machineId: 0
