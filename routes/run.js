@@ -12,7 +12,7 @@ async function stopRun(request, response) {
   if (!ensureParam('run_id', request, isInteger)) {
     // 400
   }
-  let run_id = parseInt(request.params.run_id);
+  let runId = parseInt(request.params.run_id);
   if (/** run with run_id not found */) {
     // 404
   }
@@ -23,7 +23,7 @@ async function runStatus(request, response) {
   if (!ensureParam('run_id', request, isInteger)) {
     // 400
   }
-  let run_id = parseInt(request.params.run_id);
+  let runId = parseInt(request.params.run_id);
   if (/** run with run_id not found */) {
     // 404
   }
@@ -41,7 +41,7 @@ async function deleteRun(request, response) {
   if (!ensureParam('run_id', request, isInteger)) {
     // 400
   }
-  let run_id = parseInt(request.params.run_id);
+  let runId = parseInt(request.params.run_id);
   if (/** run with run_id not found */) {
     // 404
   }
