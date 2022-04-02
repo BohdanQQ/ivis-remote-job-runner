@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { describe, it } = require('mocha');
-const { walkObject } = require('../lib/util');
+const { walkObject, hasParam } = require('../lib/util');
 
 describe('Utility', () => {
   describe('#walkObject()', () => {
@@ -165,6 +165,50 @@ describe('Utility', () => {
       };
 
       assert.equal(walkObject({ other: 'x' }, desc), false);
+    });
+  });
+});
+
+describe('Utility', () => {
+  describe('#hasParam()', () => {
+    it('enforces presence of a parameter within request\'s params (present)', () => {
+      const request = {
+        params: {
+          alpha: null,
+        },
+      };
+
+      assert.equal(hasParam('alpha', request), true);
+    });
+
+    it('enforces presence of a parameter within request\'s params (missing)', () => {
+      const request = {
+        params: {
+          beta: null,
+        },
+      };
+
+      assert.equal(hasParam('alpha', request), false);
+    });
+
+    it('enforces predicate on a parameter (predicate holds)', () => {
+      const request = {
+        params: {
+          alpha: ['beta'],
+        },
+      };
+
+      assert.equal(hasParam('alpha', request, (arr) => Array.isArray(arr) && arr.indexOf('beta') !== -1), true);
+    });
+
+    it('enforces predicate on a parameter (predicate fails)', () => {
+      const request = {
+        params: {
+          alpha: 11,
+        },
+      };
+
+      assert.equal(hasParam('alpha', request, (num) => num instanceof Number && num > 44), false);
     });
   });
 });

@@ -1,4 +1,4 @@
-
+const {hasParam, walkObject} = require('../lib/util')
 
 const RUN_SPEC = {
   "taskId": "int",
@@ -9,7 +9,7 @@ const RUN_SPEC = {
 }
 
 async function stopRun(request, response) {
-  if (!ensureParam('run_id', request, isInteger)) {
+  if (!hasParam('run_id', request, isInteger)) {
     // 400
   }
   let runId = parseInt(request.params.run_id);
@@ -20,7 +20,7 @@ async function stopRun(request, response) {
 }
 
 async function runStatus(request, response) {
-  if (!ensureParam('run_id', request, isInteger)) {
+  if (!hasParam('run_id', request, isInteger)) {
     // 400
   }
   let runId = parseInt(request.params.run_id);
