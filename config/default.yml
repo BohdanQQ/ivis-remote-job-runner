@@ -1,6 +1,6 @@
 ivisCore:
-  hostIPOrName: 0.0.0.0
-  ivisTLSPort: 8080
+  trustedIPOrName: 0.0.0.0
+  trustedAuthPort: 8080
   ivisElasticSearchPort: 9200
   CACert: ./certs/ca.crt
   venvCmd: 'python3 -m venv'
