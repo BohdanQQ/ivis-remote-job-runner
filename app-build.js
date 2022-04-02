@@ -1,15 +1,10 @@
-"use strict";
-const config = require('./lib/config');
-const runJob = require('./routes/run');
-const stopJob = require('./routes/stop');
-const getStatus = require('./routes/status');
-const buildTask = require('./routes/build');
+const run = require('./routes/run');
 
 function buildApp(app) {
-    app.post('/build', buildTask);
-    app.post('/run', runJob);
-    app.delete('/run', stopJob);
-    app.get('/run', getStatus);
+  app.post('/run/:rid', run.buildAndRun);
+  app.delete('/run/:rid', run.remove);
+  app.post('/run/:rid/stop', run.stop);
+  app.get('/run');
 }
 
 module.exports = buildApp;
