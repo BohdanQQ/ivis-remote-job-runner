@@ -1,14 +1,33 @@
 ivisCore:
   trustedIPOrName: 0.0.0.0
+  # the IVIS-core port designated for remote-worker communication
+  # (emulation of run-manager emitted messages to the IVIS-core)
+  # (if IVIS-core supports HTTPS) communication on this port is only 
+  # allowed using the worker's client certificate
   trustedAuthPort: 8080
+  # same limitations as above
   ivisElasticSearchPort: 9200
   CACert: ./certs/ca.crt
   venvCmd: 'python3 -m venv'
 
 jobRunner:
-  serverCertificatePath: ./certs/srv.crt
-  serverCertificateKeyPath: ./certs/srv.key
-  clientCertificatePath: ./certs/client.crt
-  clientCertificateKey: ./certs/client.key
+  # reminder: the usage of cerficiates will force HTTPS
+  # and becuase of that, IVIS-core is expected to have
+  # HTTPS enabled as well
+  useCertificates: false
+  # IVIS-core-issued server certificate
+  # (used when IVIS-core sends requests to the worker)
+  serverCert:
+    certPath: ./certs/srv.crt
+    keyPath:  ./certs/srv.key
+  # IVIS-core-issued client certificate
+  # (used when the worker sends requests to IVIS-core)
+  clientCert:
+    certPath: ./certs/client.crt
+    keyPath:  ./certs/client.key
   port: 443
   machineId: 0
+  maxJobOutput: 1000000
+  workCheckInterval: 5
+  printLimitReachedMessage: true
+  
