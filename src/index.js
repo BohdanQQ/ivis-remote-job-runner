@@ -15,10 +15,9 @@
 //     console.log(`IVIS Job runner is listening on port ${port}`);
 //   });
 // }
-
 const { fork } = require('child_process');
 
-const workerSource = './jobs/remote-job-handler.js';
+const workerSource = './src/jobs/remote-job-handler.js';
 const workerProcess = fork(workerSource);
 
 const { HandlerMsgType } = require('./shared/remote-run');

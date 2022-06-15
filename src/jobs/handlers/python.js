@@ -9,7 +9,7 @@ const { log } = require('../../lib/log');
 /** The virtual environment folder for a task */
 const ENV_NAME = '.env';
 /** The folder containing the IVIS Python package */
-const IVIS_PCKG_DIR = path.join(__dirname, '..', '..', 'lib', 'jobs', 'python', 'ivis', 'dist');
+const IVIS_PCKG_DIR = path.join(__dirname, '..', '..', '..', 'setup', 'jobs', 'python', 'ivis', 'dist');
 
 function getPackages(subtype) {
   return subtype ? taskSubtypeSpecs[subtype].libs : defaultPythonLibs;

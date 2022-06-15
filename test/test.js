@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { describe, it } = require('mocha');
-const { walkObject, hasParam } = require('../lib/util');
+const { walkObject, hasParam } = require('../src/lib/util');
 
 describe('Utility', () => {
   describe('#walkObject()', () => {

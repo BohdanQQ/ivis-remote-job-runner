@@ -1,6 +1,6 @@
 const { log } = require('../lib/log');
 const runs = require('../models/run');
-const { RemoteRunState, HandlerMsgType } = require('../shared/remoteRun');
+const { RemoteRunState, HandlerMsgType } = require('../shared/remote-run');
 const config = require('../lib/config');
 const { TaskType, BUILD_DIR_PATH } = require('../shared/tasks');
 const pythonHandler = require('./handlers/python');

@@ -28,7 +28,7 @@ const taskSubtypeSpecs = {
   },
 };
 
-const BUILD_DIR_PATH = `${__dirname}/../files`;
+const BUILD_DIR_PATH = `${__dirname}/../../files`;
 
 const JobMsgType = {
   STORE_STATE: 'store_state',

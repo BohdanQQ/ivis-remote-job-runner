@@ -1,7 +1,10 @@
 FROM node:16-alpine
 WORKDIR /opt/ivis-remote
-COPY . .
-run nmp install 
-CMD ["npx", "watch", "index.js"]
+COPY . /opt/ivis-remote
+RUN apk add --no-cache python3 py3-pip bash
+RUN npm install --legacy-peer-deps
+RUN npm install sqlite3 --legacy-peer-deps
+RUN . ./setup/setupIVISPck.sh
+CMD ["npm", "run", "watch-docker"]
 # TODO
 EXPOSE 3000

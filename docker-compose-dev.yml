@@ -1,0 +1,15 @@
+version: '3'
+services:
+  ivis-remote-runner:
+    image: apache
+    build:
+      context: ./
+      dockerfile: ./Dockerfile-dev
+    volumes:
+      - ./src:/opt/ivis-remote/src
+      - ./data:/opt/ivis-remote/data
+      - ./files:/opt/ivis-remote/files
+    container_name: ivis-remote-runner
+    ports:
+      # check that this exports the same port as the port in the corresponding dockerfile 
+      - "3000:8080"
