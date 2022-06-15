@@ -1,0 +1,7 @@
+FROM node:16-alpine
+WORKDIR /opt/ivis-remote
+COPY . .
+run nmp install --production
+CMD ["node", "index.js"]
+# TODO
+EXPOSE 3000
