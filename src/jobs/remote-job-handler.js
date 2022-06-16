@@ -22,11 +22,7 @@ async function onBuildSuccess(runId, warnings) {
   const output = {};
   output.warnings = warnings || [];
   output.errors = [];
-  if (warnings) {
-    // TODO: refactor `REMOTE BUILD WARNINGS: ${warnings.join('\n')}` into a function
-    return runs.appendErrMessage(runId, `REMOTE BUILD WARNINGS: ${warnings.join('\n')}`);
-  }
-  return runs.changeState(runId, RemoteRunState.QUEUED).then((success) => {
+  return runs.changeState(runId, RemoteRunState.SUCCESS).then((success) => {
     if (!success) {
       return Promise.reject(new Error('Could not write run status to database'));
     }
@@ -44,7 +40,7 @@ function onBuildFail(runId, warnings, errors) {
       return Promise.reject(new Error('Could not write run status to database'));
     }
     if (warnings) {
-      return runs.appendErrMessage(runId, `REMOTE BUILD WARNINGS: ${warnings.join('\n')}\nREMOTE BUILD ERRORS: ${errors.join('\n')}`);
+      return runs.appendErrMessage(runId, `REMOTE BUILD WARNINGS:\n${warnings.join('\n')}\nREMOTE BUILD ERRORS: ${errors.join('\n')}`);
     }
     return Promise.resolve();
   });
@@ -60,10 +56,13 @@ function getBuildPromise(handler, runId, subtype, code, destDir) {
         destDir,
       },
       (warnings) => {
-        onBuildSuccess(runId, warnings).then(() => resolve(true));
+        const warn = warnings ? `REMOTE BUILD WARNINGS:\n${warnings.join('\n')}\n` : '';
+        onBuildSuccess(runId, warnings).then(() => resolve({ success: true, warn, err: '' }));
       },
       (warnings, errors) => {
-        onBuildFail(runId, warnings, errors).then(() => resolve(false));
+        const warn = warnings ? `REMOTE BUILD WARNINGS:\n${warnings.join('\n')}\n` : '';
+        const err = errors ? `REMOTE BUILD ERRORS:\n${errors.join('\n')}\n` : '';
+        onBuildFail(runId, warnings, errors).then(() => resolve({ success: false, warn, err }));
       },
     );
   });
@@ -149,6 +148,13 @@ async function handleRun({
     jobId,
   },
 }) {
+  const runAfterBuild = runAfterBuildPermission.get(runId);
+  if (runAfterBuild !== undefined && !runAfterBuild) {
+    runs.changeState(runId, RemoteRunState.RUN_FAIL);
+    return;
+  }
+  runAfterBuildPermission.delete(runId);
+
   const handler = handlerMap.get(taskType);
   try {
     if (!handler) {
@@ -212,14 +218,13 @@ async function handleRun({
 async function handleStop(msg) {
   const { runId } = msg.spec;
   const index = workQueue.findIndex((i) => i.spec.runId === runId);
-  const updateStatusToStopped = async (rId) => runs.setErrMessage(rId, 'Run Cancelled\n')
+  const updateStatusToStopped = async (rId) => runs.appendErrMessage(rId, 'Run Cancelled\n')
     .then(() => runs.changeState(rId, RemoteRunState.RUN_FAIL))
     .then((changeStateResult) => {
       if (!changeStateResult) {
         log.warn('Could not change run state!');
       }
     });
-
   // remove from queue or stop via corresponding handler
   if (index !== -1) {
     workQueue.splice(index, 1);
@@ -230,6 +235,7 @@ async function handleStop(msg) {
       try {
         // DB updates, etc. will be handled by the onFail handler provided to the run manager
         await handler.stop(runId);
+        await runs.appendErrMessage(runId, 'Run Cancelled\n');
       } catch (err) {
         log.error(err);
       }
@@ -314,32 +320,37 @@ async function scheduleRun({
     tryStartWork();
   }
 
+  await runs.createRun(runId);
+  await runs.changeState(runId, RemoteRunState.QUEUED);
+
   const buildPromise = buildingWork.get(taskId);
-  if (buildPromise) {
-    if (runAfterBuildPermission.get(runId) !== false) {
-      runAfterBuildPermission.set(runId, true);
+  if (buildPromise === undefined) {
+    if (runAfterBuildPermission.get(runId) === false) {
+      runs.changeState(runId, RemoteRunState.RUN_FAIL);
+      return;
     }
-    await runs.createRun(runId);
-    await runs.changeState(runId, RemoteRunState.QUEUED);
-    buildPromise.then((success) => {
-      if (!runAfterBuildPermission.get(runId)) {
-        runs.changeState(runId, RemoteRunState.RUN_FAIL);
-        return false;
-      }
-      runAfterBuildPermission.delete(runId);
-      if (!success) {
-        runs.changeState(runId, RemoteRunState.BUILD_FAIL);
-        return false;
-      }
-      return runs.changeState(runId, RemoteRunState.RUNNING);
-    })
-      .then((canRun) => {
-        if (canRun) pushRun();
-      });
-  } else {
+
     await runs.changeState(runId, RemoteRunState.RUNNING);
     pushRun();
+    return;
   }
+
+  if (runAfterBuildPermission.get(runId) !== false) {
+    runAfterBuildPermission.set(runId, true);
+  }
+
+  const { success, warn, err } = await buildPromise;
+
+  const toWriteWarn = warn || '';
+  const toWriteErr = err || '';
+
+  await runs.appendErrMessage(runId, toWriteWarn + toWriteErr);
+
+  if (!success) {
+    runs.changeState(runId, RemoteRunState.BUILD_FAIL);
+    return;
+  }
+  pushRun();
 }
 
 function scheduleEvent(event) {

@@ -30,8 +30,10 @@ const build11 = {
     type: TaskType.PYTHON,
     subtype: defaultSubtypeKey,
     code: `
+import time
 x = 5
 print(x)
+time.sleep(2)
 x = 6
 print(x)
 raise aaaaaa
@@ -75,13 +77,20 @@ const stop14 = {
   },
 };
 
+const stop12 = {
+  type: HandlerMsgType.STOP,
+  spec: {
+    runId: 12,
+  },
+};
+
 try {
-  workerProcess.send(build11);
-  workerProcess.send(run12);
-  workerProcess.send(run14);
+  // workerProcess.send(build11);
+  workerProcess.send([run12, run14]);
+
   setTimeout(() => {
-    workerProcess.send(stop14);
-  }, 10000);
+    workerProcess.send(stop12);
+  }, 500);
 } catch (err) {
   console.error(err);
 }
