@@ -104,26 +104,28 @@ async function setOutput(runId, output) {
   await knex(RUNS_TABLE).where(RID_COLUMN, runId).update({ output });
 }
 
-async function appendOutput(runId, output) {
+async function appendToRunField(runId, field, toAppend) {
   const run = await knex(RUNS_TABLE).where(RID_COLUMN, runId).first();
   if (!run) {
     return;
   }
-  run.output += output;
-  await knex(RUNS_TABLE).where(RID_COLUMN, runId).update({ output: run.output });
+  run[field] += toAppend;
+
+  const mutObj = {};
+  mutObj[field] = run[field];
+  await knex(RUNS_TABLE).where(RID_COLUMN, runId).update(mutObj);
+}
+
+async function appendOutput(runId, output) {
+  appendToRunField(runId, 'output', output);
 }
 
 async function setErrMessage(runId, message) {
   await knex(RUNS_TABLE).where(RID_COLUMN, runId).update({ errMsg: message });
 }
-// TODO: recaftor with appendOutput
+
 async function appendErrMessage(runId, message) {
-  const run = await knex(RUNS_TABLE).where(RID_COLUMN, runId).first();
-  if (!run) {
-    return;
-  }
-  run.errMsg += message;
-  await knex(RUNS_TABLE).where(RID_COLUMN, runId).update({ errMsg: run.errMsg });
+  appendToRunField(runId, 'errMsg', message);
 }
 
 module.exports = {
