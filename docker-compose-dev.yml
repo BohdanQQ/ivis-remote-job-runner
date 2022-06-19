@@ -1,7 +1,6 @@
 version: '3'
 services:
   ivis-remote-runner:
-    image: apache
     build:
       context: ./
       dockerfile: ./Dockerfile-dev
