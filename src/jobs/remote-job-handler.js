@@ -5,6 +5,7 @@ const config = require('../lib/config');
 const { TaskType, BUILD_DIR_PATH } = require('../shared/tasks');
 const pythonHandler = require('./handlers/python');
 const { createRunManager } = require('./handlers/run-manager');
+const { updateBuildCache, isBuildCached } = require('../models/task_build_cache');
 
 let isWorking = false;
 const workQueue = [];
@@ -69,6 +70,7 @@ function getBuildPromise(handler, runId, subtype, code, destDir) {
 }
 
 // TODO remove subtype - move to a general config
+// NOTE: build cache depends on subtype -> restructure build cache?
 async function handleBuild({
   spec: {
     taskId,
@@ -78,6 +80,9 @@ async function handleBuild({
     runId,
   },
 }) {
+  if (await isBuildCached(taskId, type, subtype, code)) {
+    return;
+  }
   const handler = handlerMap.get(type);
   runs.createRun(runId);
   if (!handler) {
@@ -85,7 +90,8 @@ async function handleBuild({
   } else {
     buildingWork.set(taskId, getBuildPromise(handler, runId, subtype, code, `${BUILD_DIR_PATH}/${taskId}`));
     const buildPromise = buildingWork.get(taskId);
-    await buildPromise.then(() => buildingWork.delete(taskId));
+    await buildPromise.then(() => buildingWork.delete(taskId))
+      .then(() => updateBuildCache(taskId, type, subtype, code));
   }
 }
 
@@ -225,7 +231,7 @@ async function handleStop(msg) {
         log.warn('Could not change run state!');
       }
     });
-  // remove from queue or stop via corresponding handler
+    // remove from queue or stop via corresponding handler
   if (index !== -1) {
     workQueue.splice(index, 1);
     await updateStatusToStopped(runId);
