@@ -8,5 +8,3 @@ exports.up = (knex) => knex.schema
   });
 
 exports.down = (knex) => knex.schema.dropTable('job_runs');
-
-// TODO: code + taskID/params cache to avoid unnecessary rebuilds
