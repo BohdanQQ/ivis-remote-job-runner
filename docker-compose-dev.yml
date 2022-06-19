@@ -8,6 +8,7 @@ services:
       - ./src:/opt/ivis-remote/src
       - ./data:/opt/ivis-remote/data
       - ./files:/opt/ivis-remote/files
+      - ./test:/opt/ivis-remote/test
     container_name: ivis-remote-runner
     ports:
       # check that this exports the same port as the port in the corresponding dockerfile 
