@@ -1,3 +1,3 @@
 #!/bin/bash
 
-npx knex migrate:latest
+npx knex --knexfile=../src/knexfile.js migrate:latest
