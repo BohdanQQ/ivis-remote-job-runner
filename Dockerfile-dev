@@ -1,9 +1,10 @@
 FROM node:16-alpine
 WORKDIR /opt/ivis-remote
 COPY . /opt/ivis-remote
+RUN rm -rf ./node_modules
 RUN apk add --no-cache python3 py3-pip bash
-RUN npm install --legacy-peer-deps
-RUN npm install sqlite3 --legacy-peer-deps
+RUN npm install
+RUN npm install sqlite3
 RUN . ./setup/setupIVISPck.sh
 CMD ["npm", "run", "watch-docker"]
 # TODO
