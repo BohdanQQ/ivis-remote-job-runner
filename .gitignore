@@ -1,5 +1,6 @@
 /files
 data/db.db
+data/test/test.db
 /certs
 # Logs
 logs
