@@ -1,5 +1,5 @@
 FROM node:16-alpine
-RUN apk add --no-cache python3 py3-pip bash
+RUN apk add --no-cache python3 py3-pip bash curl
 WORKDIR /opt/ivis-remote
 
 COPY package*.json ./

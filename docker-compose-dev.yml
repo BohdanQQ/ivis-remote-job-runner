@@ -9,7 +9,17 @@ services:
       - ./data:/opt/ivis-remote/data
       - ./files:/opt/ivis-remote/files
       - ./test:/opt/ivis-remote/test
+      - ./config:/opt/ivis-remote/config
+      - ./cert:/opt/ivis-remote/cert
     container_name: ivis-remote-runner
     ports:
       # check that this exports the same port as the port in the corresponding dockerfile 
       - "3000:8080"
+# attach to external network to test functionality
+#     networks:
+#       docker-listen_rje-test:
+#         ipv4_address: 10.5.0.5
+
+# networks:
+#   docker-listen_rje-test:
+#     external: true

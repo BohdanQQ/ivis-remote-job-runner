@@ -12,7 +12,14 @@ const HandlerMsgType = {
   STOP: 2,
 };
 
+const PushType = {
+  STATE_UPDATE: 0,
+  APPEND_OUTPUT: 1,
+  EMIT: 2,
+};
+
 module.exports = {
   RemoteRunState,
   HandlerMsgType,
+  PushType,
 };

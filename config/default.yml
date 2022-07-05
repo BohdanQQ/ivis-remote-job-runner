@@ -1,3 +1,4 @@
+# all paths are relative to the project root
 ivisCore:
   trustedIPOrName: 0.0.0.0
   # the IVIS-core port designated for remote-worker communication
@@ -7,6 +8,11 @@ ivisCore:
   trustedAuthPort: 8080
   # same limitations as above
   ivisElasticSearchPort: 9200
+  # use local CA when PERFORMING REQUESTS to accept a locally-issued certificate
+  # e.g. when not running on the internet
+  # set to false if the IVIS-core server certificate may be verified normally 
+  # (using global certificate chain of trust)
+  useLocalCA: true
   CACert: ./certs/ca.crt
   venvCmd: 'python3 -m venv'
 
@@ -28,6 +34,12 @@ jobRunner:
   port: 443
   machineId: 0
   maxJobOutput: 1000000
+  # in seconds
   workCheckInterval: 5
   printLimitReachedMessage: true
-  
+  messagePush:
+    # how many times a message push will be retried in case of failure
+    maxRetryCount: 0
+    # in seconds
+    retryInterval: 2
+    pushDestination: "/rc/push"

@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/BohdanQQ/ivis-remote-job-runner#readme",
   "dependencies": {
+    "axios": "^0.27.2",
     "child_process": "^1.0.2",
     "code-point-at": "^2.0.0",
     "config": "^3.3.7",
