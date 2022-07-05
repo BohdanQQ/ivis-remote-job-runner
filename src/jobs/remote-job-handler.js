@@ -58,12 +58,16 @@ function getBuildPromise(handler, runId, subtype, code, destDir) {
       },
       (warnings) => {
         const warn = warnings ? `REMOTE BUILD WARNINGS:\n${warnings.join('\n')}\n` : '';
-        onBuildSuccess(runId, warnings).then(() => resolve({ success: true, warn, err: '' }));
+        onBuildSuccess(runId, warnings)
+          .then(() => resolve({ success: true, warn, err: '' }))
+          .catch((e) => resolve({ success: false, warn, err: e.toString() }));
       },
       (warnings, errors) => {
         const warn = warnings ? `REMOTE BUILD WARNINGS:\n${warnings.join('\n')}\n` : '';
-        const err = errors ? `REMOTE BUILD ERRORS:\n${errors.join('\n')}\n` : '';
-        onBuildFail(runId, warnings, errors).then(() => resolve({ success: false, warn, err }));
+        const errs = errors ? `REMOTE BUILD ERRORS:\n${errors.join('\n')}\n` : '';
+        onBuildFail(runId, warnings, errors)
+          .then(() => resolve({ success: false, warn, err: errs }))
+          .catch((e) => resolve({ success: false, warn, err: errs + e.toString() }));
       },
     );
   });
