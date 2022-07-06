@@ -13,9 +13,8 @@ const HandlerMsgType = {
 };
 
 const PushType = {
-  STATE_UPDATE: 0,
-  APPEND_OUTPUT: 1,
-  EMIT: 2,
+  STATE_UPDATE: 0, // TODO: only emit? (no? - what if IVIS-core adds standalone even types - !!! possible overlap !!!)
+  EMIT: 1,
 };
 
 module.exports = {

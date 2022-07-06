@@ -6,6 +6,7 @@ const { TaskType, BUILD_DIR_PATH } = require('../shared/tasks');
 const pythonHandler = require('./handlers/python');
 const { createRunManager } = require('./handlers/run-manager');
 const { updateBuildCache, isBuildCached } = require('../models/task_build_cache');
+const tellBack = require('../lib/remotePush');
 
 let isWorking = false;
 const workQueue = [];
@@ -142,7 +143,7 @@ async function handleRunFail(jobId, runId, runData, errMsg) {
 async function onRunFail(jobId, runId, runData, errMsg) {
   runningHandlers.delete(runId);
   await handleRunFail(jobId, runId, runData, errMsg);
-  // TODO emitToCoreSystem(getFailEventType(runId), errMsg);
+  await tellBack.emitRemote(tellBack.getFailEventType(runId), errMsg);
 }
 
 async function handleRun({
@@ -152,6 +153,8 @@ async function handleRun({
     owned,
     taskType,
     runId,
+    accessToken,
+    state,
     taskId,
     // eslint-disable-next-line no-unused-vars
     dir,
@@ -161,6 +164,7 @@ async function handleRun({
   const runAfterBuild = runAfterBuildPermission.get(runId);
   if (runAfterBuild !== undefined && !runAfterBuild) {
     runs.changeState(runId, RemoteRunState.RUN_FAIL);
+    await tellBack.emitRemote(tellBack.getFailEventType(runId), 'Remote Build Failed, check job output for details');
     return;
   }
   runAfterBuildPermission.delete(runId);
@@ -174,6 +178,9 @@ async function handleRun({
 
     await runs.changeState(runId, RemoteRunState.RUNNING);
     runningHandlers.set(runId, handler);
+    // DIFF
+    // taskDir: `${BUILD_DIR_PATH}/${taskId}`
+    // inputData.context: { jobId }
 
     const runConfig = {
       jobId,
@@ -183,19 +190,19 @@ async function handleRun({
         context: {
           jobId,
         },
-        params: params || {},
+        params,
         entities,
         owned,
-        // accessToken: spec.accessToken || null,
+        accessToken,
         es: {
-          host: `${config.ivisCore.trustedIPOrName}`,
-          port: `${config.ivisCore.ivisElasticSearchPort}`,
+          host: config.ivisCore.es.host,
+          port: `${config.ivisCore.es.port}`,
         },
-        // server: {
-        //   trustedUrlBase: config.www.trustedUrlBase,
-        //   sandboxUrlBase: config.www.sandboxUrlBase,
-        // },
-        state: await loadJobState(jobId),
+        server: {
+          trustedUrlBase: `https://${config.ivisCore.trustedIPOrName}:${config.ivisCore.trustedAuthPort}`,
+          sandboxUrlBase: `https://${config.ivisCore.sandboxIPOrName}:${config.ivisCore.sandboxPort}`,
+        },
+        state,
       },
     };
 
@@ -204,8 +211,7 @@ async function handleRun({
       onRunSuccess: () => {
         runningHandlers.delete(runId);
       },
-      emit: (x) => { log.log(`emit: ${x}}`); },
-      // TODO emit: emitToCoreSystem,
+      config: runConfig,
     });
 
     handler.run(
@@ -256,8 +262,7 @@ async function handleStop(msg) {
     }
   }
 
-  // TODO:
-  // emitToCoreSystem(getStopEventType(runId));
+  await tellBack.emitRemote(tellBack.getStopEventType(runId));
 }
 
 async function startWork() {
@@ -302,33 +307,16 @@ function tryStartWork() {
 
 async function scheduleRun({
   type,
-  spec: {
-    params,
-    entities,
-    owned,
-    taskType,
-    runId,
-    taskId,
-    dir,
-    jobId,
-  },
+  spec,
 }) {
   async function pushRun() {
     workQueue.push({
       type,
-      spec: {
-        params,
-        entities,
-        owned,
-        taskType,
-        runId,
-        taskId,
-        dir,
-        jobId,
-      },
+      spec,
     });
     tryStartWork();
   }
+  const { runId, taskId } = spec;
 
   await runs.createRun(runId);
   await runs.changeState(runId, RemoteRunState.QUEUED);
@@ -337,6 +325,7 @@ async function scheduleRun({
   if (buildPromise === undefined) {
     if (runAfterBuildPermission.get(runId) === false) {
       runs.changeState(runId, RemoteRunState.RUN_FAIL);
+      await tellBack.emitRemote(tellBack.getFailEventType(runId), 'Remote Build Failed, check job output for details');
       return;
     }
 
@@ -355,9 +344,9 @@ async function scheduleRun({
   const toWriteErr = err || '';
 
   await runs.appendErrMessage(runId, toWriteWarn + toWriteErr);
-
   if (!success) {
     runs.changeState(runId, RemoteRunState.BUILD_FAIL);
+    await tellBack.emitRemote(tellBack.getFailEventType(runId), 'Remote Build Failed, check job output for details');
     return;
   }
   pushRun();

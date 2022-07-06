@@ -71,4 +71,52 @@ async function runStatusUpdate(
   };
   await pushAttemptLoop(getIVIScoreUrl('status'), requestBody);
 }
-module.exports = { runStatusUpdate };
+// taken from ivis implementation
+// hopefully will make the communication more cooperative
+const EventTypes = {
+  RUN_OUTPUT: 'output',
+  INIT: 'init',
+  STOP: 'stop',
+  FAIL: 'fail',
+  SUCCESS: 'success',
+  ACCESS_TOKEN: 'access_token',
+  ACCESS_TOKEN_REFRESH: 'access_token_refresh',
+};
+
+function getOutputEventType(runId) {
+  return `run/${runId}/${EventTypes.RUN_OUTPUT}`;
+}
+
+function getStopEventType(runId) {
+  return `run/${runId}/${EventTypes.STOP}`;
+}
+
+function getFailEventType(runId) {
+  return `run/${runId}/${EventTypes.FAIL}`;
+}
+
+function getSuccessEventType(runId) {
+  return `run/${runId}/${EventTypes.SUCCESS}`;
+}
+
+async function emitRemote(eventType, data) {
+  const requestBody = {
+    type: PushType.EMIT,
+    payload:
+        {
+          type: eventType,
+          data,
+        },
+  };
+  await pushAttemptLoop(getIVIScoreUrl('emit'), requestBody);
+}
+
+module.exports = {
+  runStatusUpdate,
+  emitRemote,
+  getStopEventType,
+  getOutputEventType,
+  getFailEventType,
+  getSuccessEventType,
+  EventTypes,
+};

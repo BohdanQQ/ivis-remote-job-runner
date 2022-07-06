@@ -5,32 +5,37 @@ ivisCore:
   # (emulation of run-manager emitted messages to the IVIS-core)
   # (if IVIS-core supports HTTPS) communication on this port is only 
   # allowed using the worker's client certificate
-  trustedAuthPort: 8080
+  trustedAuthPort: 9080
+  sandboxIPOrName: 0.0.0.0
+  # TODO: uses HTTPS client-cert or not? (reminder... tokens!)
+  sandboxPort: 9081
   # same limitations as above
-  ivisElasticSearchPort: 9200
+  es:
+    host: 0.0.0.0
+    port: 9200
   # use local CA when PERFORMING REQUESTS to accept a locally-issued certificate
   # e.g. when not running on the internet
   # set to false if the IVIS-core server certificate may be verified normally 
   # (using global certificate chain of trust)
   useLocalCA: true
-  CACert: ./certs/ca.crt
+  CACert: ./cert/ca.cert.pem
   venvCmd: 'python3 -m venv'
 
 jobRunner:
   # reminder: the usage of cerficiates will force HTTPS
   # and becuase of that, IVIS-core is expected to have
   # HTTPS enabled as well
-  useCertificates: false
+  useCertificates: true
   # IVIS-core-issued server certificate
   # (used when IVIS-core sends requests to the worker)
   serverCert:
-    certPath: ./certs/srv.crt
-    keyPath:  ./certs/srv.key
+    certPath: ./cert/runner.cert.pem
+    keyPath:  ./cert/runner.key.insecure
   # IVIS-core-issued client certificate
   # (used when the worker sends requests to IVIS-core)
   clientCert:
-    certPath: ./certs/client.crt
-    keyPath:  ./certs/client.key
+    certPath: ./cert/runner.cert.pem
+    keyPath:  ./cert/runner.key.insecure
   port: 443
   machineId: 0
   maxJobOutput: 1000000
@@ -39,7 +44,7 @@ jobRunner:
   printLimitReachedMessage: true
   messagePush:
     # how many times a message push will be retried in case of failure
-    maxRetryCount: 0
+    maxRetryCount: 2
     # in seconds
-    retryInterval: 2
+    retryInterval: 1
     pushDestination: "/rc/push"

@@ -1,10 +1,9 @@
 const config = require('../../lib/config');
-// const knex = require('../../lib/knex');
 const { JobMsgType, STATE_FIELD } = require('../../shared/tasks');
 const { RemoteRunState } = require('../../shared/remote-run');
 const { log } = require('../../lib/log');
-// const { getSuccessEventType, getOutputEventType } = require('../../lib/task-events');
 const runs = require('../../models/run');
+const tellBack = require('../../lib/remotePush');
 
 const LOG_ID = 'Task-handler';
 
@@ -106,15 +105,31 @@ function createRunManager(jobId, runId, runOptions) {
   let limitReached = false;
   let outputBuffer = [];
   let timer;
+  let accessTokenRefreshTimer;
+  const { accessToken } = runOptions.config.inputData;
+
+  async function refreshAccessToken() {
+    tellBack.emitRemote(tellBack.EventTypes.ACCESS_TOKEN_REFRESH, {
+      runId,
+      jobId,
+      accessToken,
+    });
+    accessTokenRefreshTimer = setTimeout(refreshAccessToken, 30 * 1000);
+  }
+
+  if (accessToken) {
+    refreshAccessToken().catch(
+      (e) => log.error(e),
+    );
+  }
 
   async function cleanBuffer() {
     try {
       if (outputBuffer.length > 0) {
         const output = [...outputBuffer];
         outputBuffer = [];
-        // TODO forward
-        // runOptions.emit(getOutputEventType(runId), output);
         await runs.appendOutput(runId, output.join(''));
+        await tellBack.emitRemote(tellBack.getOutputEventType(runId), output);
       }
       timer = null;
     } catch (e) {
@@ -126,17 +141,18 @@ function createRunManager(jobId, runId, runOptions) {
 
   async function onRunFailFromRunningStatus(errMsg) {
     await cleanBuffer();
+    clearTimeout(accessTokenRefreshTimer);
     await runOptions.onRunFail(jobId, runId, runData, errMsg);
   }
 
   /**
-     * Callback for successful run.
-     * @param cfg config
-     * @returns {Promise<void>}
-     */
+       * Callback for successful run.
+       * @param cfg config
+       * @returns {Promise<void>}
+       */
   async function onRunSuccess(cfg) {
     await cleanBuffer();
-
+    clearTimeout(accessTokenRefreshTimer);
     runOptions.onRunSuccess();
     runData.finished_at = new Date();
     runData.status = RemoteRunState.SUCCESS;
@@ -148,8 +164,7 @@ function createRunManager(jobId, runId, runOptions) {
     } catch (err) {
       log.error(LOG_ID, err);
     }
-    // TODO forward
-    // runOptions.emit(getSuccessEventType(runId));
+    tellBack.emitRemote(tellBack.getSuccessEventType(runId));
   }
 
   // eslint-disable-next-line consistent-return
@@ -167,8 +182,7 @@ function createRunManager(jobId, runId, runOptions) {
                   await runs.appendOutput(runId, 'INFO: max output storage capacity reached\n');
                   const maxMsg = 'INFO: max output capacity reached';
                   if (!timer) {
-                    // TODO forward
-                    // runOptions.emit(getOutputEventType(runId), maxMsg);
+                    tellBack.emitRemote(tellBack.getOutputEventType(runId), maxMsg);
                   } else {
                     outputBuffer.push(maxMsg);
                   }
@@ -178,6 +192,11 @@ function createRunManager(jobId, runId, runOptions) {
               }
             } else {
               outputBuffer.push(data);
+              /* Note:
+in the ivis-core version, this (timer reset, periodic cleanbuffer) is here because
+the buffer is being periodically flushed; further investigation is needed as to whether
+there is more than a performance benefit to it
+*/
               // TODO Don't know how well this will scale
               // --   it might be better to append to a file, but this will require further syncing
               // --   as we need full output for task development in the UI, not only output after
