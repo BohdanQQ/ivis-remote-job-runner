@@ -2,7 +2,7 @@
 process.env.NODE_ENV = 'test';
 
 const {
-  describe, it, before,
+  describe, it, before, after,
 } = require('mocha');
 const assert = require('assert');
 const knex = require('../src/lib/knex');
@@ -15,6 +15,11 @@ describe('build cache tests', () => {
     await knex.migrate.latest();
     await knex.seed.run();
   }, 10000);
+
+  after(() => {
+    knex.destroy();
+  });
+
   describe('isBuildCached()', () => {
     it('returns false when asked for nonexistent build', async () => {
       const nonexistentTaskId = -1;
