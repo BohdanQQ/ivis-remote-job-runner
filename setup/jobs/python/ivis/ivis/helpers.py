@@ -13,7 +13,14 @@ class Ivis:
 
     def __init__(self):
         self._data = json.loads(sys.stdin.readline())
-        self._elasticsearch = Elasticsearch([{'host': self._data['es']['host'], 'port': int(self._data['es']['port'])}])
+        esUrl = str(self._data['es']['host']) + ":" + str(self._data['es']['port'])
+        if self._data['certs']:
+            ca_path = self._data['caPath']
+            cert_path = self._data['certPath']
+            key_path = self._data['keyPath']
+            self._elasticsearch = Elasticsearch(esUrl, use_ssl=True, ca_certs=ca_path, client_cert=cert_path, client_key=key_path, verify_certs=True)
+        else:
+            self._elasticsearch = Elasticsearch([esUrl])
         self.state = self._data.get('state')
         self.params = self._data['params']
         self.entities = self._data['entities']

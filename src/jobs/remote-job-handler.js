@@ -7,6 +7,7 @@ const pythonHandler = require('./handlers/python');
 const { createRunManager } = require('./handlers/run-manager');
 const { updateBuildCache, isBuildCached } = require('../models/task_build_cache');
 const tellBack = require('../lib/remotePush');
+const { certPaths } = require('../lib/httpClient');
 
 let isWorking = false;
 const workQueue = [];
@@ -178,9 +179,6 @@ async function handleRun({
 
     await runs.changeState(runId, RemoteRunState.RUNNING);
     runningHandlers.set(runId, handler);
-    // DIFF
-    // taskDir: `${BUILD_DIR_PATH}/${taskId}`
-    // inputData.context: { jobId }
     const PROTOCOL = config.jobRunner.useCertificates ? 'https' : 'http';
     const runConfig = {
       jobId,
@@ -194,6 +192,10 @@ async function handleRun({
         entities,
         owned,
         accessToken,
+        certs: config.jobRunner.useCertificates,
+        caPath: certPaths.ca,
+        certPath: certPaths.cliCert,
+        keyPath: certPaths.cliKey,
         es: {
           host: config.ivisCore.es.host,
           port: `${config.ivisCore.es.port}`,
