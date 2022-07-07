@@ -181,7 +181,7 @@ async function handleRun({
     // DIFF
     // taskDir: `${BUILD_DIR_PATH}/${taskId}`
     // inputData.context: { jobId }
-
+    const PROTOCOL = config.jobRunner.useCertificates ? 'https' : 'http';
     const runConfig = {
       jobId,
       runId,
@@ -199,8 +199,8 @@ async function handleRun({
           port: `${config.ivisCore.es.port}`,
         },
         server: {
-          trustedUrlBase: `https://${config.ivisCore.trustedIPOrName}:${config.ivisCore.trustedAuthPort}`,
-          sandboxUrlBase: `https://${config.ivisCore.sandboxIPOrName}:${config.ivisCore.sandboxPort}`,
+          trustedUrlBase: `${PROTOCOL}://${config.ivisCore.trustedIPOrName}:${config.ivisCore.trustedAuthPort}`,
+          sandboxUrlBase: `${PROTOCOL}://${config.ivisCore.sandboxIPOrName}:${config.ivisCore.sandboxPort}`,
         },
         state,
       },

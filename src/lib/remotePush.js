@@ -8,7 +8,8 @@ const { maxRetryCount, retryInterval, pushDestination } = config.jobRunner.messa
 const { trustedIPOrName, trustedAuthPort } = config.ivisCore;
 const MILIS_RETRY_TIME = retryInterval * 1000;
 function getIVIScoreUrl(path) {
-  const PUSH_URL_BASE = `https://${trustedIPOrName}:${trustedAuthPort}${pushDestination}/`;
+  const PROTOCOL = config.jobRunner.useCertificates ? 'https' : 'http';
+  const PUSH_URL_BASE = `${PROTOCOL}://${trustedIPOrName}:${trustedAuthPort}${pushDestination}/`;
   return `${PUSH_URL_BASE}${path}`;
 }
 
