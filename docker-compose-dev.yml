@@ -11,6 +11,7 @@ services:
       - ./test:/opt/ivis-remote/test
       - ./config:/opt/ivis-remote/config
       - ./cert:/opt/ivis-remote/cert
+      - ./setup/jobs:/opt/ivis-remote/setup/jobs
     container_name: ivis-remote-runner
     ports:
       # check that this exports the same port as the port in the corresponding dockerfile 
