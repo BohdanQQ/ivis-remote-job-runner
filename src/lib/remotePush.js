@@ -42,7 +42,6 @@ async function pushAttemptLoop(url, requestBody, attemptNumber = 1) {
         await postponePromise(MILIS_RETRY_TIME);
         await pushAttemptLoop(url, requestBody, attemptNumber + 1);
       }
-      log.debug('Message sent!');
     })
     .catch(async (err) => {
       log.error(`An Error was encountered when pushing a message: ${err.toString()}`);

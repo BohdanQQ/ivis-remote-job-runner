@@ -25,6 +25,12 @@ paths:
           description: Invalid Request
         '404':
           description: Run under specified ID was not Found
+        '503':
+          description: The command could not be executed 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMsg'
   '/run/{run_id}':
     get:
       x-openapi-router-controller: controllers.runs
@@ -118,15 +124,33 @@ components:
         subtype:
           type: integer
           description: Task Subtype as defined in shared definitions
+        type:
+          type: integer
+          description: Task Type as defined in the shared definitions
         code:
           type: string
           description: The code of the task
         runId:
           type: integer
           description: Run ID to be assigned for the run
-        jobInputData:
+        jobId:
+          type: integer
+          description: "Job ID associated with the run, might be removed later"
+        params:
           type: object
-          description: Job input data as needed by the backend
+          description: Job paremeters as needed by the backend
+        entities:
+          type: object
+          description: Job entities as needed by the backend
+        owned:
+          type: object
+          description: Job-owned entities as needed by the backend
+        accessToken:
+          type: object
+          description: A string or null value        
+        state:
+          type: object
+          description: Job state as needed by the backend
     RunData:
       type: object
       properties:
