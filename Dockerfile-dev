@@ -8,5 +8,3 @@ RUN npm install sqlite3
 
 COPY . /opt/ivis-remote
 ENTRYPOINT [ "./setup/docker_entry.sh", "dev" ]
-# TODO
-EXPOSE 3000
