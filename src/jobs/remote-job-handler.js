@@ -107,9 +107,9 @@ async function handleBuild({
  * @returns {Promise<void>} config field retrieved from ES
  */
 // eslint-disable-next-line no-unused-vars
-async function loadJobState(id) {
-  return null;// TODO await forwardJobStateRequest(id);
-}
+// async function loadJobState(id) {
+//   return null;// TODO await forwardJobStateRequest(id);
+// }
 
 async function handleRunFail(jobId, runId, runData, errMsg) {
   if (runId) {

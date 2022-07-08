@@ -13,12 +13,30 @@ const HandlerMsgType = {
 };
 
 const PushType = {
-  STATE_UPDATE: 0, // TODO: only emit? (no? - what if IVIS-core adds standalone even types - !!! possible overlap !!!)
+  STATE_UPDATE: 0, // TODO: push status accoring to IVIS implementation (emit only affects "run job while editing task" scenario)
   EMIT: 1,
+  REQUEST: 2,
+};
+
+const RequestType = {
+  CREATE_SIG: 0,
+  STORE_STATE: 1,
+};
+
+const EventTypes = {
+  RUN_OUTPUT: 'output',
+  INIT: 'init',
+  STOP: 'stop',
+  FAIL: 'fail',
+  SUCCESS: 'success',
+  ACCESS_TOKEN: 'access_token',
+  ACCESS_TOKEN_REFRESH: 'access_token_refresh',
 };
 
 module.exports = {
   RemoteRunState,
   HandlerMsgType,
   PushType,
+  RequestType,
+  EventTypes,
 };

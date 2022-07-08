@@ -1,4 +1,4 @@
-const { PushType } = require('../shared/remote-run');
+const { PushType, RequestType, EventTypes } = require('../shared/remote-run');
 const { axiosInstance } = require('./httpClient');
 const config = require('./config');
 
@@ -71,17 +71,15 @@ async function runStatusUpdate(
   };
   await pushAttemptLoop(getIVIScoreUrl('status'), requestBody);
 }
+
+function getAccessTokenRefreshType() {
+  return EventTypes.ACCESS_TOKEN_REFRESH;
+}
 // taken from ivis implementation
 // hopefully will make the communication more cooperative
-const EventTypes = {
-  RUN_OUTPUT: 'output',
-  INIT: 'init',
-  STOP: 'stop',
-  FAIL: 'fail',
-  SUCCESS: 'success',
-  ACCESS_TOKEN: 'access_token',
-  ACCESS_TOKEN_REFRESH: 'access_token_refresh',
-};
+// these functions may be replaced with named functions, like requestStoreState and requestCreateSig
+// the reason they are kept is to make it easier to propagate change from IVIS-core behavior
+// TODO: translation layer (not direct sharing!) on the IVIS-core side for this exact purpose?
 
 function getOutputEventType(runId) {
   return `run/${runId}/${EventTypes.RUN_OUTPUT}`;
@@ -101,14 +99,51 @@ function getSuccessEventType(runId) {
 
 async function emitRemote(eventType, data) {
   const requestBody = {
-    type: PushType.EMIT,
-    payload:
-        {
-          type: eventType,
-          data,
-        },
+    type: eventType,
+    data,
   };
   await pushAttemptLoop(getIVIScoreUrl('emit'), requestBody);
+}
+
+/**
+ * @param {number} type
+ * @param {object} request
+ * @returns {Promise<object>} response from IVIS-core or null on error
+ */
+async function runRequest(type, request) {
+  const requestBody = {
+    type,
+    payload: request,
+  };
+  try {
+    const response = (await axiosInstance.post(getIVIScoreUrl('runRequest'), requestBody)).data;
+    return response;
+  } catch (error) {
+    log.log('error when running remote job request with body');
+    log.log(requestBody);
+    log.log('and error ', error);
+    return null;
+  }
+}
+
+/**
+ * @param {jobId} job ID
+ * @param {object} request
+ * @returns {Promise<object>} response from IVIS-core or null on error
+ */
+async function requestStoreState(jobId, request) {
+  return runRequest(RequestType.STORE_STATE, {
+    jobId,
+    request,
+  });
+}
+
+/**
+ * @param {object} request
+ * @returns {Promise<object>} response from IVIS-core or null on error
+ */
+async function requestCreateSig(jobId, signalSets, signalsSpec) {
+  return runRequest(RequestType.CREATE_SIG, { jobId, signalSets, signalsSpec });
 }
 
 module.exports = {
@@ -119,4 +154,7 @@ module.exports = {
   getFailEventType,
   getSuccessEventType,
   EventTypes,
+  requestStoreState,
+  requestCreateSig,
+  getAccessTokenRefreshType,
 };

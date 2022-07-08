@@ -3,7 +3,7 @@ const { JobMsgType, STATE_FIELD } = require('../../shared/tasks');
 const { RemoteRunState } = require('../../shared/remote-run');
 const { log } = require('../../lib/log');
 const runs = require('../../models/run');
-const tellBack = require('../../lib/remotePush');
+const remotePush = require('../../lib/remotePush');
 
 const LOG_ID = 'Task-handler';
 
@@ -15,8 +15,7 @@ const LOG_ID = 'Task-handler';
  */
 async function storeRunState(id, state) {
   log.log(`store state ${state} with id ${id}`);
-  // TODO forward the request to IVIS-core
-  // await forwardStoreRunState(id, state);
+  remotePush.requestStoreState(id, state);
 }
 
 function parseRequest(req) {
@@ -61,9 +60,7 @@ async function handleRequest(jobId, requestStr) {
     switch (request.type) {
       case JobMsgType.CREATE_SIGNALS:
         if (request.signalSets || request.signals) {
-          // TODO: forward the create request to IVIS-core
-          const reqResult = null;
-          // await forwardCreateRequest(jobId, request.signalSets, request.signals);
+          const reqResult = await remotePush.requestCreateSig(jobId, request.signalSets, request.signals);
           response = {
             ...response,
             ...reqResult,
@@ -74,9 +71,7 @@ async function handleRequest(jobId, requestStr) {
         break;
       case JobMsgType.STORE_STATE:
         if (request[STATE_FIELD]) {
-          // TODO: forward the store request to IVIS-core
-          const reqResult = null;
-          // await forwardStoreRunState(jobId, request[STATE_FIELD]);
+          const reqResult = await remotePush.requestStoreState(jobId, request[STATE_FIELD]);
           response = {
             ...response,
             ...reqResult,
@@ -109,7 +104,7 @@ function createRunManager(jobId, runId, runOptions) {
   const { accessToken } = runOptions.config.inputData;
 
   async function refreshAccessToken() {
-    tellBack.emitRemote(tellBack.EventTypes.ACCESS_TOKEN_REFRESH, {
+    remotePush.emitRemote(remotePush.getAccessTokenRefreshType(), {
       runId,
       jobId,
       accessToken,
@@ -129,7 +124,7 @@ function createRunManager(jobId, runId, runOptions) {
         const output = [...outputBuffer];
         outputBuffer = [];
         await runs.appendOutput(runId, output.join(''));
-        await tellBack.emitRemote(tellBack.getOutputEventType(runId), output);
+        await remotePush.emitRemote(remotePush.getOutputEventType(runId), output);
       }
       timer = null;
     } catch (e) {
@@ -164,7 +159,7 @@ function createRunManager(jobId, runId, runOptions) {
     } catch (err) {
       log.error(LOG_ID, err);
     }
-    tellBack.emitRemote(tellBack.getSuccessEventType(runId));
+    remotePush.emitRemote(remotePush.getSuccessEventType(runId));
   }
 
   // eslint-disable-next-line consistent-return
@@ -182,7 +177,7 @@ function createRunManager(jobId, runId, runOptions) {
                   await runs.appendOutput(runId, 'INFO: max output storage capacity reached\n');
                   const maxMsg = 'INFO: max output capacity reached';
                   if (!timer) {
-                    tellBack.emitRemote(tellBack.getOutputEventType(runId), maxMsg);
+                    remotePush.emitRemote(remotePush.getOutputEventType(runId), maxMsg);
                   } else {
                     outputBuffer.push(maxMsg);
                   }
