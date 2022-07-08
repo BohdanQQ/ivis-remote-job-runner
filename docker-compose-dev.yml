@@ -1,5 +1,17 @@
 version: '3'
 services:
+  rje:
+    image: nginx
+    volumes:
+      - ./proxyCfg/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./cert/:/opt/cert:ro
+    container_name: rje-nginx
+    # networks:
+    #   ivis-containerized_ivis-net:
+    ports:
+      - 9088:9088
+    depends_on:
+      - ivis-remote-runner
   ivis-remote-runner:
     build:
       context: ./
@@ -13,14 +25,11 @@ services:
       - ./cert:/opt/ivis-remote/cert
       - ./setup/jobs:/opt/ivis-remote/setup/jobs
     container_name: ivis-remote-runner
-    ports:
-      # check that this exports the same port as the port in the corresponding dockerfile 
-      - "3000:8080"
+
 # attach to external network to test functionality
 #     networks:
-#       docker-listen_rje-test:
-#         ipv4_address: 10.5.0.5
+#       ivis-containerized_ivis-net:
 
 # networks:
-#   docker-listen_rje-test:
+#   ivis-containerized_ivis-net:
 #     external: true
