@@ -226,14 +226,19 @@ async function handleRun({
 async function handleStop(msg) {
   const { runId } = msg.spec;
   const index = workQueue.findIndex((i) => i.spec.runId === runId);
-  const updateStatusToStopped = async (rId) => runs.appendErrMessage(rId, 'Run Cancelled\n')
-    .then(() => runs.changeState(rId, RemoteRunState.RUN_FAIL))
-    .then((changeStateResult) => {
-      if (!changeStateResult) {
-        log.warn('Could not change run state!');
-      }
-    });
-    // remove from queue or stop via corresponding handler
+  const updateStatusToStopped = async (rId) => {
+    // runs in queue are not yet in the database and since the run is removed from queue,
+    // no double create will occur
+    await runs.createRun(rId);
+    return runs.appendErrMessage(rId, 'Run Cancelled\n')
+      .then(() => runs.changeState(rId, RemoteRunState.RUN_FAIL))
+      .then((changeStateResult) => {
+        if (!changeStateResult) {
+          log.warn('Could not change run state on stop!');
+        }
+      });
+  };
+  // remove from queue or stop via corresponding handler
   if (index !== -1) {
     workQueue.splice(index, 1);
     await updateStatusToStopped(runId);
@@ -242,8 +247,8 @@ async function handleStop(msg) {
     if (handler) {
       try {
         // DB updates, etc. will be handled by the onFail handler provided to the run manager
-        await handler.stop(runId);
         await runs.appendErrMessage(runId, 'Run Cancelled\n');
+        await handler.stop(runId);
       } catch (err) {
         log.error(err);
       }
