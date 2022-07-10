@@ -1,3 +1,4 @@
+const { inspect } = require('node:util');
 const { PushType, RequestType, EventTypes } = require('../shared/remote-run');
 const { axiosInstance } = require('./httpClient');
 const config = require('./config');
@@ -30,7 +31,7 @@ async function pushAttemptLoop(url, requestBody, attemptNumber = 1) {
   if (maxRetryCount + 1 < attemptNumber) {
     log.error(`All ${maxRetryCount + 1} attempts have failed to push a message to IVIS-core!`);
     log.debug(`Message URL: ${url}`);
-    log.debug(`Message Body: ${requestBody}`);
+    log.debug(`Message Body: ${inspect(requestBody)}`);
     return;
   }
   axiosInstance.post(url, requestBody)
@@ -38,7 +39,7 @@ async function pushAttemptLoop(url, requestBody, attemptNumber = 1) {
       if (status === 400) { // BAD REQUEST
         log.error(`Bad request when pushing a message: ${data}`);
         log.debug(`Message URL: ${url}`);
-        log.debug(`Message Body: ${requestBody}`);
+        log.debug(`Message Body: ${inspect(requestBody)}`);
       } else if (status !== 200) {
         await postponePromise(MILIS_RETRY_TIME);
         await pushAttemptLoop(url, requestBody, attemptNumber + 1);
