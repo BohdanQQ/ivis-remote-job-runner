@@ -46,19 +46,41 @@ describe('build cache tests', () => {
   describe('updateBuildCache() and isBuildCached() integration', () => {
     it('isBuildCached returns true when asked for an updated cached build', async () => {
       const args = [0, 'type0', 'subtype0', 'totallynewcode'];
-      cacheModel.updateBuildCache(...args);
+      await cacheModel.updateBuildCache(...args);
       assert.equal(await cacheModel.isBuildCached(...args), true);
     });
 
     it('isBuildCached returns false when asked for an old cached build after an update', async () => {
-      cacheModel.updateBuildCache(0, 'type0', 'subtype0', 'totallynewcode');
+      await cacheModel.updateBuildCache(0, 'type0', 'subtype0', 'totallynewcode');
       assert.equal(await cacheModel.isBuildCached(0, 'type0', 'subtype0', 'task0'), false);
     });
 
     it('isBuildCached returns true when asked for a newly cached entry (previously unseen)', async () => {
       const args = [111, '111', '111', 'code111'];
-      cacheModel.updateBuildCache(...args);
+      await cacheModel.updateBuildCache(...args);
       assert.equal(await cacheModel.isBuildCached(...args), true);
+    });
+  });
+  describe('invalidateBuildCache()', () => {
+    it('invalidates when cache entry not present', async () => {
+      const taskId = 0;
+      await cacheModel.invalidateBuildCache(taskId);
+      assert.equal(await cacheModel.isBuildCached(taskId, 's', 't', 'u'), false);
+    });
+
+    it('does not change invalid entries', async () => {
+      const taskId = 0;
+      await cacheModel.invalidateBuildCache(taskId);
+      await cacheModel.invalidateBuildCache(taskId);
+      assert.equal(await cacheModel.isBuildCached(taskId, 's', 't', 'u'), false);
+    });
+
+    it('invalidates when there is a valid cache entry', async () => {
+      const taskId = 0;
+      const args = [taskId, '111', '111', 'code111'];
+      await cacheModel.updateBuildCache(...args);
+      await cacheModel.invalidateBuildCache(taskId);
+      assert.equal(await cacheModel.isBuildCached(...args), false);
     });
   });
 });

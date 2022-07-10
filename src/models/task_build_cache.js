@@ -10,8 +10,12 @@ const CACHE_TABLE = 'task_build_cache';
 const HASH_INPUT_ENCODING = 'utf-8';
 const HASH_OUTPUT_ENCODING = 'hex';
 
+function getCodeHash(code) {
+  return crypto.createHash('sha512').update(code, HASH_INPUT_ENCODING).digest(HASH_OUTPUT_ENCODING);
+}
+
 async function isBuildCached(taskId, type, subtype, code) {
-  const hashedCode = crypto.createHash('sha512').update(code, HASH_INPUT_ENCODING).digest(HASH_OUTPUT_ENCODING);
+  const hashedCode = getCodeHash(code, HASH_INPUT_ENCODING);
 
   const cacheEntry = await knex(CACHE_TABLE)
     .where(TID_COLUMN, taskId)
@@ -27,17 +31,17 @@ async function isBuildCached(taskId, type, subtype, code) {
   return true;
 }
 
-async function updateBuildCache(taskId, type, subtype, code) {
+async function updateBuildCache(taskId, type, subtype, code, warnings = '', errors = '') {
   return knex.transaction(
     async (t) => {
-      const run = await t(CACHE_TABLE).where(TID_COLUMN, taskId).first();
+      const cacheEntry = await t(CACHE_TABLE).where(TID_COLUMN, taskId).first();
       const diffObj = {};
 
       diffObj[TYPE_COLUMN] = type;
       diffObj[SUBTYPE_COLUMN] = subtype;
-      diffObj[HASH_COLUMN] = crypto.createHash('sha512').update(code, HASH_INPUT_ENCODING).digest(HASH_OUTPUT_ENCODING);
+      diffObj[HASH_COLUMN] = getCodeHash(code, HASH_INPUT_ENCODING);
 
-      if (run) {
+      if (cacheEntry) {
         await t(CACHE_TABLE).where(TID_COLUMN, taskId).update(diffObj);
         return;
       }
@@ -49,7 +53,30 @@ async function updateBuildCache(taskId, type, subtype, code) {
   );
 }
 
+async function invalidateBuildCache(taskId) {
+  return knex.transaction(
+    async (t) => {
+      const cacheEntry = await t(CACHE_TABLE).where(TID_COLUMN, taskId).first();
+      const diffObj = {};
+
+      diffObj[HASH_COLUMN] = '\0';
+
+      if (cacheEntry) {
+        await t(CACHE_TABLE).where(TID_COLUMN, taskId).update(diffObj);
+        return;
+      }
+
+      diffObj[TID_COLUMN] = taskId;
+      diffObj[TYPE_COLUMN] = '\0';
+      diffObj[SUBTYPE_COLUMN] = '\0';
+
+      await t(CACHE_TABLE).insert(diffObj);
+    },
+  );
+}
+
 module.exports = {
   isBuildCached,
   updateBuildCache,
+  invalidateBuildCache,
 };
