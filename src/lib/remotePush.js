@@ -56,19 +56,17 @@ async function pushAttemptLoop(url, requestBody, attemptNumber = 1) {
  * pushes a status update to the IVIS-core instance
  * @param {*} runId  the id of the run whose information will be pushed
  * @param {*} status run status
- * @param {*} sequenceNumber ordering safeguard, ascending
  * @param {*} warns  warnings, not mandatory
  * @param {*} errors errors, not mandatory
  */
 async function runStatusUpdate(
   runId,
   status,
-  sequenceNumber,
-  warns = undefined,
+  output = undefined,
   errors = undefined,
 ) {
   const requestBody = {
-    type: PushType.STATE_UPDATE, sequenceNumber, runId, status, warns, errors,
+    type: PushType.STATE_UPDATE, runId, status, output, errors,
   };
   await pushAttemptLoop(getIVIScoreUrl('status'), requestBody);
 }
