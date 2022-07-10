@@ -105,15 +105,19 @@ async function setOutput(runId, output) {
 }
 
 async function appendToRunField(runId, field, toAppend) {
-  const run = await knex(RUNS_TABLE).where(RID_COLUMN, runId).first();
-  if (!run) {
-    return;
-  }
-  run[field] += toAppend;
+  return knex.transaction(
+    async (t) => {
+      const run = await t(RUNS_TABLE).where(RID_COLUMN, runId).first();
+      if (!run) {
+        return;
+      }
+      run[field] += toAppend;
 
-  const mutObj = {};
-  mutObj[field] = run[field];
-  await knex(RUNS_TABLE).where(RID_COLUMN, runId).update(mutObj);
+      const mutObj = {};
+      mutObj[field] = run[field];
+      await t(RUNS_TABLE).where(RID_COLUMN, runId).update(mutObj);
+    },
+  );
 }
 
 async function appendOutput(runId, output) {
