@@ -156,6 +156,13 @@ function createRunManager(jobId, runId, runOptions) {
       if (cfg) {
         await storeRunState(jobId, cfg);
       }
+      const finalRun = await runs.getRunById(runId);
+
+      if (finalRun === null) {
+        log.error(`Could not push data to IVIS-core, run ${runId} does not exist!`);
+      } else {
+        await remotePush.runStatusUpdate(runId, finalRun.runData, finalRun.output, finalRun.errMsg);
+      }
     } catch (err) {
       log.error(LOG_ID, err);
     }

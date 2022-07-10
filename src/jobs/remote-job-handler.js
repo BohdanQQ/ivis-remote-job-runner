@@ -99,6 +99,13 @@ async function handleRunFail(jobId, runId, runData, errMsg) {
       if (!await runs.changeRunData(runId, dataToSave)) {
         log.error('Could not save run data when handling run failure');
       }
+      const finalRun = await runs.getRunById(runId);
+
+      if (finalRun === null) {
+        log.error(`Could not push data to IVIS-core, run ${runId} does not exist!`);
+      } else {
+        await tellBack.runStatusUpdate(runId, finalRun.runData, finalRun.output, finalRun.errMsg);
+      }
     } catch (err) {
       log.error(err);
     }
@@ -168,6 +175,9 @@ async function handleRun({
     }
 
     await runs.changeState(runId, RemoteRunState.RUNNING);
+    await tellBack.runStatusUpdate(runId, {
+      status: RemoteRunState.RUNNING,
+    });
     runningHandlers.set(runId, handler);
     const PROTOCOL = config.jobRunner.useCertificates ? 'https' : 'http';
     const runConfig = {
@@ -215,6 +225,9 @@ async function handleRun({
   } catch (error) {
     log.error(error);
     await runs.changeState(runId, RemoteRunState.RUN_FAIL);
+    tellBack.runStatusUpdate(runId, {
+      status: RemoteRunState.RUN_FAIL,
+    }, '', `Pre-run checks, handler or run manager failed with following error:\n${error}`);
   }
 }
 
@@ -230,18 +243,26 @@ async function handleStop(msg) {
     // runs in queue are not yet in the database and since the run is removed from queue,
     // no double create will occur
     await runs.createRun(rId);
-    return runs.appendErrMessage(rId, 'Run Cancelled\n')
+    const cancelledMsg = 'Run Cancelled\n';
+    return runs.appendErrMessage(rId, cancelledMsg)
       .then(() => runs.changeState(rId, RemoteRunState.RUN_FAIL))
       .then((changeStateResult) => {
         if (!changeStateResult) {
           log.warn('Could not change run state on stop!');
         }
-      });
+      })
+      .then(() => tellBack.runStatusUpdate(
+        runId,
+        { status: RemoteRunState.RUN_FAIL },
+        '',
+        cancelledMsg,
+      ));
   };
   // remove from queue or stop via corresponding handler
   if (index !== -1) {
     workQueue.splice(index, 1);
     await updateStatusToStopped(runId);
+    await tellBack.emitRemote(tellBack.getStopEventType(runId));
   } else {
     const handler = runningHandlers.get(runId);
     if (handler) {
@@ -249,6 +270,7 @@ async function handleStop(msg) {
         // DB updates, etc. will be handled by the onFail handler provided to the run manager
         await runs.appendErrMessage(runId, 'Run Cancelled\n');
         await handler.stop(runId);
+        await tellBack.emitRemote(tellBack.getStopEventType(runId));
       } catch (err) {
         log.error(err);
       }
@@ -256,8 +278,6 @@ async function handleStop(msg) {
       // job not enqueued to run and job not running - should not happen
       log.error('queueing error');
     }
-
-    await tellBack.emitRemote(tellBack.getStopEventType(runId));
   }
 }
 
