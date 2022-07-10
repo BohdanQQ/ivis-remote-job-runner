@@ -31,7 +31,7 @@ async function isBuildCached(taskId, type, subtype, code) {
   return true;
 }
 
-async function updateBuildCache(taskId, type, subtype, code, warnings = '', errors = '') {
+async function updateBuildCache(taskId, type, subtype, code) {
   return knex.transaction(
     async (t) => {
       const cacheEntry = await t(CACHE_TABLE).where(TID_COLUMN, taskId).first();
