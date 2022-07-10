@@ -5,7 +5,9 @@ const config = require('../lib/config');
 const { TaskType, BUILD_DIR_PATH } = require('../shared/tasks');
 const pythonHandler = require('./handlers/python');
 const { createRunManager } = require('./handlers/run-manager');
-const { updateBuildCache, isBuildCached } = require('../models/task_build_cache');
+const {
+  updateBuildCache, isBuildCached, invalidateBuildCache,
+} = require('../models/task_build_cache');
 const tellBack = require('../lib/remotePush');
 const { certPaths } = require('../lib/httpClient');
 
@@ -13,43 +15,24 @@ let isWorking = false;
 const workQueue = [];
 // run_id -> run_handler
 const runningHandlers = new Map();
-// task_id -> promise(bool) (success of the build task)
-const buildingWork = new Map();
 // building -> STOP -> discard the build **and stop the scheduled run as well**
-const runAfterBuildPermission = new Map();
+// also holds the build warnings and errors
+const afterBuildMessage = new Map();
 const checkInterval = config.jobRunner.workCheckInterval * 1000;
 const handlerMap = new Map();
 handlerMap.set(TaskType.PYTHON, pythonHandler);
 
-async function onBuildSuccess(runId, warnings) {
-  const output = {};
-  output.warnings = warnings || [];
-  output.errors = [];
-  return runs.changeState(runId, RemoteRunState.SUCCESS).then((success) => {
-    if (!success) {
-      return Promise.reject(new Error('Could not write run status to database'));
-    }
-    return Promise.resolve();
-  });
-}
-
-function onBuildFail(runId, warnings, errors) {
-  const output = {};
-  output.warnings = warnings || [];
-  output.errors = errors || [];
-
-  return runs.changeState(runId, RemoteRunState.BUILD_FAIL).then((success) => {
-    if (!success) {
-      return Promise.reject(new Error('Could not write run status to database'));
-    }
-    if (warnings) {
-      return runs.appendErrMessage(runId, `REMOTE BUILD WARNINGS:\n${warnings.join('\n')}\nREMOTE BUILD ERRORS: ${errors.join('\n')}`);
-    }
-    return Promise.resolve();
-  });
-}
-
-function getBuildPromise(handler, runId, subtype, code, destDir) {
+function getBuildPromise(type, subtype, code, destDir, runId, taskId) {
+  // this promise never rejects! (only resolves or is unresolved forever - which would be a bug)
+  const handler = handlerMap.get(type);
+  if (handler === undefined) {
+    afterBuildMessage.set(runId, {
+      run: false,
+      warn: '',
+      err: `task type ${type} not recognised`,
+    });
+    return invalidateBuildCache(taskId);
+  }
   // eslint-disable-next-line no-unused-vars
   return new Promise((resolve, reject) => {
     handler.init(
@@ -60,23 +43,28 @@ function getBuildPromise(handler, runId, subtype, code, destDir) {
       },
       (warnings) => {
         const warn = warnings ? `REMOTE BUILD WARNINGS:\n${warnings.join('\n')}\n` : '';
-        onBuildSuccess(runId, warnings)
-          .then(() => resolve({ success: true, warn, err: '' }))
-          .catch((e) => resolve({ success: false, warn, err: e.toString() }));
+        afterBuildMessage.set(runId, {
+          run: true,
+          warn,
+          err: '',
+        });
+        updateBuildCache(taskId, type, subtype, code, warn)
+          .then(resolve);
       },
       (warnings, errors) => {
         const warn = warnings ? `REMOTE BUILD WARNINGS:\n${warnings.join('\n')}\n` : '';
         const errs = errors ? `REMOTE BUILD ERRORS:\n${errors.join('\n')}\n` : '';
-        onBuildFail(runId, warnings, errors)
-          .then(() => resolve({ success: false, warn, err: errs }))
-          .catch((e) => resolve({ success: false, warn, err: errs + e.toString() }));
+        afterBuildMessage.set(runId, {
+          run: false,
+          warn,
+          err: errs,
+        });
+        invalidateBuildCache(taskId, warn, errs).then(resolve);
       },
     );
   });
 }
 
-// TODO remove subtype - move to a general config
-// NOTE: build cache depends on subtype -> restructure build cache?
 async function handleBuild({
   spec: {
     taskId,
@@ -87,29 +75,15 @@ async function handleBuild({
   },
 }) {
   if (await isBuildCached(taskId, type, subtype, code)) {
+    afterBuildMessage.set(runId, {
+      run: true,
+      warn: '',
+      err: '',
+    });
     return;
   }
-  const handler = handlerMap.get(type);
-  runs.createRun(runId);
-  if (!handler) {
-    await onBuildFail(runId, null, [`Handler for type not found: ${type}`]);
-  } else {
-    buildingWork.set(taskId, getBuildPromise(handler, runId, subtype, code, `${BUILD_DIR_PATH}/${taskId}`));
-    const buildPromise = buildingWork.get(taskId);
-    await buildPromise.then(() => buildingWork.delete(taskId))
-      .then(() => updateBuildCache(taskId, type, subtype, code));
-  }
+  await getBuildPromise(type, subtype, code, `${BUILD_DIR_PATH}/${taskId}`, runId, taskId);
 }
-
-/**
- * Load saved config from elasticsearch
- * @param id
- * @returns {Promise<void>} config field retrieved from ES
- */
-// eslint-disable-next-line no-unused-vars
-// async function loadJobState(id) {
-//   return null;// TODO await forwardJobStateRequest(id);
-// }
 
 async function handleRunFail(jobId, runId, runData, errMsg) {
   if (runId) {
@@ -162,13 +136,29 @@ async function handleRun({
     jobId,
   },
 }) {
-  const runAfterBuild = runAfterBuildPermission.get(runId);
-  if (runAfterBuild !== undefined && !runAfterBuild) {
-    runs.changeState(runId, RemoteRunState.RUN_FAIL);
-    await tellBack.emitRemote(tellBack.getFailEventType(runId), 'Remote Build Failed, check job output for details');
+  // here we expect only one IVIS-core instance will use the the remote runner
+  await runs.createRun(runId);
+
+  const afterRunData = afterBuildMessage.get(runId);
+  if (!afterRunData) {
+    await runs.changeState(runId, RemoteRunState.RUN_FAIL);
+    await runs.appendErrMessage(runId, 'Remote runner error');
+    await tellBack.emitRemote(tellBack.getFailEventType(runId), 'Remote runner error');
     return;
   }
-  runAfterBuildPermission.delete(runId);
+
+  const { run: runAfterBuild, warn, err } = afterRunData;
+  afterBuildMessage.delete(runId);
+  if (!runAfterBuild) {
+    await runs.changeState(runId, RemoteRunState.RUN_FAIL);
+    await tellBack.emitRemote(tellBack.getFailEventType(runId), `Remote Build Failed\n${warn}${err}`);
+    return;
+  }
+
+  if (warn !== '') {
+    await runs.appendOutput(warn);
+    await tellBack.emitRemote(tellBack.getOutputEventType(runId), warn);
+  }
 
   const handler = handlerMap.get(taskType);
   try {
@@ -222,8 +212,8 @@ async function handleRun({
       runManager.onRunSuccess,
       runManager.onRunFail,
     );
-  } catch (err) {
-    log.error(err);
+  } catch (error) {
+    log.error(error);
     await runs.changeState(runId, RemoteRunState.RUN_FAIL);
   }
 }
@@ -257,35 +247,34 @@ async function handleStop(msg) {
       } catch (err) {
         log.error(err);
       }
-    } else if (runAfterBuildPermission.get(runId)) {
-      // If the job is not running, it is possible that it is waiting for a build to finish
-      runAfterBuildPermission.set(runId, false);
-      await updateStatusToStopped(runId);
+    } else {
+      // job not enqueued to run and job not running - should not happen
+      log.error('queueing error');
     }
-  }
 
-  await tellBack.emitRemote(tellBack.getStopEventType(runId));
+    await tellBack.emitRemote(tellBack.getStopEventType(runId));
+  }
 }
 
 async function startWork() {
   while (workQueue.length > 0) {
     const event = workQueue.shift();
-
     const { type } = event;
-    // TODO: refactor
     try {
       switch (type) {
         case HandlerMsgType.BUILD:
+          // the entire build blocks the loop
+          // this is to prevent multiple builds for the same task (but a different job)
+          // to race each other
           // eslint-disable-next-line no-await-in-loop
           await handleBuild(event);
           break;
         case HandlerMsgType.RUN:
+          // run does not block the loop for the entirety of its runtime
+          // here we expect that a rebuild of a task T while a job
+          // of a task T is running is incorrect
           // eslint-disable-next-line no-await-in-loop
           await handleRun(event);
-          break;
-        case HandlerMsgType.STOP:
-          // eslint-disable-next-line no-await-in-loop
-          await handleStop(event);
           break;
         default:
           break;
@@ -307,54 +296,7 @@ function tryStartWork() {
   startWork().catch((err) => log.error(err));
 }
 
-async function scheduleRun({
-  type,
-  spec,
-}) {
-  async function pushRun() {
-    workQueue.push({
-      type,
-      spec,
-    });
-    tryStartWork();
-  }
-  const { runId, taskId } = spec;
-
-  await runs.createRun(runId);
-  await runs.changeState(runId, RemoteRunState.QUEUED);
-
-  const buildPromise = buildingWork.get(taskId);
-  if (buildPromise === undefined) {
-    if (runAfterBuildPermission.get(runId) === false) {
-      runs.changeState(runId, RemoteRunState.RUN_FAIL);
-      await tellBack.emitRemote(tellBack.getFailEventType(runId), 'Remote Build Failed, check job output for details');
-      return;
-    }
-
-    await runs.changeState(runId, RemoteRunState.RUNNING);
-    pushRun();
-    return;
-  }
-
-  if (runAfterBuildPermission.get(runId) !== false) {
-    runAfterBuildPermission.set(runId, true);
-  }
-
-  const { success, warn, err } = await buildPromise;
-
-  const toWriteWarn = warn || '';
-  const toWriteErr = err || '';
-
-  await runs.appendErrMessage(runId, toWriteWarn + toWriteErr);
-  if (!success) {
-    runs.changeState(runId, RemoteRunState.BUILD_FAIL);
-    await tellBack.emitRemote(tellBack.getFailEventType(runId), 'Remote Build Failed, check job output for details');
-    return;
-  }
-  pushRun();
-}
-
-function scheduleEvent(event) {
+async function scheduleEvent(event) {
   if (!event) {
     return;
   }
@@ -363,11 +305,10 @@ function scheduleEvent(event) {
     // TODO: refactor
     switch (event.type) {
       case HandlerMsgType.BUILD: workQueue.push(event); break;
-      case HandlerMsgType.STOP: workQueue.push(event); break;
-      case HandlerMsgType.RUN: scheduleRun(event); break;
+      case HandlerMsgType.STOP: await handleStop(event); break;
+      case HandlerMsgType.RUN: workQueue.push(event); break;
       default: log.log(`Unknown event type ${event.type}`); return;
     }
-    tryStartWork();
   } catch (err) {
     log.error(err);
   }
@@ -375,12 +316,17 @@ function scheduleEvent(event) {
 
 process.on('message', (msg) => {
   if (msg instanceof Array) {
+    // this is specifically for build and run
+    // since the code execution for enqueueing [build, run] won't
+    // run into an await, it is guaranteed that build and run will happen in
+    // the exact order "build -> run" with no other builds in between
     msg.forEach((event) => {
       scheduleEvent(event);
     });
   } else {
     scheduleEvent(msg);
   }
+  tryStartWork();
 });
 setInterval(tryStartWork, checkInterval);
 log.log('Worker process started');
