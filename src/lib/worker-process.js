@@ -51,7 +51,6 @@ function sendBuildRunBundle(spec) {
       state: spec.state,
       runId: spec.runId,
       taskId: spec.taskId,
-      dir: spec.taskId,
       jobId: spec.jobId,
     },
   };

@@ -8,20 +8,38 @@ const { createRunManager } = require('./handlers/run-manager');
 const {
   updateBuildCache, isBuildCached, invalidateBuildCache,
 } = require('../models/task_build_cache');
-const tellBack = require('../lib/remotePush');
+const remotePush = require('../lib/remotePush');
 const { certPaths } = require('../lib/httpClient');
 
 let isWorking = false;
 const workQueue = [];
-// run_id -> run_handler
+// run ID -> handler which corresponds with the run's task type
+// used in case of a run stop request
 const runningHandlers = new Map();
-// building -> STOP -> discard the build **and stop the scheduled run as well**
-// also holds the build warnings and errors
+
+// run ID -> message of the following structure: {run: bool, warn: string, err: string}
+// due to the BUILD-RUN relationship, this serves to propagate build warnings and errors
+// to the scheduled run
 const afterBuildMessage = new Map();
 const checkInterval = config.jobRunner.workCheckInterval * 1000;
+
+// task type -> task type handler
+// handler is a type-specialized functionality which implements an interface for
+// building tasks, running and stopping jobs of a particular task type
 const handlerMap = new Map();
 handlerMap.set(TaskType.PYTHON, pythonHandler);
 
+/**
+ * Builds a task
+ * @param {number} type see shared/tasks
+ * @param {string} subtype see shared/tasks
+ * @param {string} code task code
+ * @param {string} destDir directory where the task shall be built
+ * @param {number} runId runId associated with this build
+ * @param {number} taskId
+ * @returns {Promise<void>} A promise which never rejects, builds supplied task and saves
+ * the last build result (a success flag with output) to the afterBuildMessage map.
+ */
 function getBuildPromise(type, subtype, code, destDir, runId, taskId) {
   // this promise never rejects! (only resolves or is unresolved forever - which would be a bug)
   const handler = handlerMap.get(type);
@@ -33,8 +51,7 @@ function getBuildPromise(type, subtype, code, destDir, runId, taskId) {
     });
     return invalidateBuildCache(taskId);
   }
-  // eslint-disable-next-line no-unused-vars
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     handler.init(
       {
         subtype,
@@ -59,12 +76,18 @@ function getBuildPromise(type, subtype, code, destDir, runId, taskId) {
           warn,
           err: errs,
         });
+        // making sure previously cached build becomes invalid
         invalidateBuildCache(taskId, warn, errs).then(resolve);
       },
     );
   });
 }
 
+/**
+ * Performs a cache-checked build.
+ * @param {object} build message
+ * @returns a promise which finishes when the build is finished
+ */
 async function handleBuild({
   spec: {
     taskId,
@@ -85,49 +108,52 @@ async function handleBuild({
   await getBuildPromise(type, subtype, code, `${BUILD_DIR_PATH}/${taskId}`, runId, taskId);
 }
 
-async function handleRunFail(jobId, runId, runData, errMsg) {
-  if (runId) {
-    let dataToSave = runData;
-    if (!runData) {
-      dataToSave = {};
-    }
-
-    dataToSave.finished_at = new Date();
-    dataToSave.status = RemoteRunState.RUN_FAIL;
-    try {
-      await runs.appendErrMessage(runId, errMsg);
-      if (!await runs.changeRunData(runId, dataToSave)) {
-        log.error('Could not save run data when handling run failure');
-      }
-      const finalRun = await runs.getRunById(runId);
-
-      if (finalRun === null) {
-        log.error(`Could not push data to IVIS-core, run ${runId} does not exist!`);
-      } else {
-        await tellBack.runStatusUpdate(runId, finalRun.runData, finalRun.output, finalRun.errMsg);
-      }
-    } catch (err) {
-      log.error(err);
-    }
-  } else if (errMsg) {
-    log.error(`Job ${jobId} run failed: ${errMsg}`);
+/**
+ * Writes and propagates run failure data where necessary.
+ * Formally terminates the run with failed status.
+ * @param {number} runId
+ * @param {object} runData
+ * @param {string} errMsg
+ */
+async function handleRunFail(runId, runData, errMsg) {
+  let dataToSave = runData;
+  if (!runData) {
+    dataToSave = {};
   }
+
+  dataToSave.finished_at = new Date();
+  dataToSave.status = RemoteRunState.RUN_FAIL;
+  try {
+    await runs.appendErrMessage(runId, errMsg);
+    if (!await runs.changeRunData(runId, dataToSave)) {
+      log.error('Could not save run data when handling run failure');
+    }
+    const finalRun = await runs.getRunById(runId);
+
+    if (finalRun === null) {
+      log.error(`Could not push data to IVIS-core, run ${runId} does not exist!`);
+    } else {
+      await remotePush.runStatusUpdate(runId, finalRun.runData, finalRun.output, finalRun.errMsg);
+    }
+  } catch (err) {
+    log.error(err);
+  }
+  await remotePush.emitRemote(remotePush.getFailEventType(runId), errMsg);
 }
 
 /**
  * Run fail handler. Used as the exit point for run msg handling process.
- * @param jobId
  * @param runId
  * @param runData
  * @param errMsg Error description
  * @returns {Promise<void>}
  */
-async function onRunFail(jobId, runId, runData, errMsg) {
+async function onRunFail(runId, runData, errMsg) {
   runningHandlers.delete(runId);
-  await handleRunFail(jobId, runId, runData, errMsg);
-  await tellBack.emitRemote(tellBack.getFailEventType(runId), errMsg);
+  await handleRunFail(runId, runData, errMsg);
 }
 
+/** Prepares and dispatches a run. */
 async function handleRun({
   spec: {
     params,
@@ -138,19 +164,19 @@ async function handleRun({
     accessToken,
     state,
     taskId,
-    // eslint-disable-next-line no-unused-vars
-    dir,
     jobId,
   },
 }) {
   // here we expect only one IVIS-core instance will use the the remote runner
+  // (that runId will be unique for each run, or at least that 2 duplicate ids
+  // won't exist at the same time)
   await runs.createRun(runId);
 
   const afterRunData = afterBuildMessage.get(runId);
   if (!afterRunData) {
     await runs.changeState(runId, RemoteRunState.RUN_FAIL);
     await runs.appendErrMessage(runId, 'Remote runner error');
-    await tellBack.emitRemote(tellBack.getFailEventType(runId), 'Remote runner error');
+    await remotePush.emitRemote(remotePush.getFailEventType(runId), 'Remote runner error');
     return;
   }
 
@@ -158,26 +184,27 @@ async function handleRun({
   afterBuildMessage.delete(runId);
   if (!runAfterBuild) {
     await runs.changeState(runId, RemoteRunState.RUN_FAIL);
-    await tellBack.emitRemote(tellBack.getFailEventType(runId), `Remote Build Failed\n${warn}${err}`);
+    await remotePush.emitRemote(remotePush.getFailEventType(runId), `Remote Build Failed\n${warn}${err}`);
     return;
   }
 
   if (warn !== '') {
     await runs.appendOutput(warn);
-    await tellBack.emitRemote(tellBack.getOutputEventType(runId), warn);
+    await remotePush.emitRemote(remotePush.getOutputEventType(runId), warn);
   }
 
   const handler = handlerMap.get(taskType);
   try {
     if (!handler) {
-      await onRunFail(runId, `handler for task type ${taskType} not found`);
+      await onRunFail(runId, undefined, `handler for task type ${taskType} not found`);
       return;
     }
 
     await runs.changeState(runId, RemoteRunState.RUNNING);
-    await tellBack.runStatusUpdate(runId, {
+    await remotePush.runStatusUpdate(runId, {
       status: RemoteRunState.RUNNING,
     });
+
     runningHandlers.set(runId, handler);
     const PROTOCOL = config.jobRunner.useCertificates ? 'https' : 'http';
     const runConfig = {
@@ -225,7 +252,7 @@ async function handleRun({
   } catch (error) {
     log.error(error);
     await runs.changeState(runId, RemoteRunState.RUN_FAIL);
-    tellBack.runStatusUpdate(runId, {
+    remotePush.runStatusUpdate(runId, {
       status: RemoteRunState.RUN_FAIL,
     }, '', `Pre-run checks, handler or run manager failed with following error:\n${error}`);
   }
@@ -251,7 +278,7 @@ async function handleStop(msg) {
           log.warn('Could not change run state on stop!');
         }
       })
-      .then(() => tellBack.runStatusUpdate(
+      .then(() => remotePush.runStatusUpdate(
         runId,
         { status: RemoteRunState.RUN_FAIL },
         '',
@@ -263,15 +290,15 @@ async function handleStop(msg) {
   if (index !== -1) {
     workQueue.splice(index, 1);
     await updateStatusToStopped(runId);
-    await tellBack.emitRemote(tellBack.getStopEventType(runId));
+    await remotePush.emitRemote(remotePush.getStopEventType(runId));
   } else {
     const handler = runningHandlers.get(runId);
     if (handler) {
       try {
-        // DB updates, etc. will be handled by the onFail handler provided to the run manager
         await runs.appendErrMessage(runId, 'Run Cancelled\n');
+        // other DB updates, etc. will be handled by the onFail handler provided to the run manager
         await handler.stop(runId);
-        await tellBack.emitRemote(tellBack.getStopEventType(runId));
+        await remotePush.emitRemote(remotePush.getStopEventType(runId));
       } catch (err) {
         log.error(err);
       }
@@ -303,6 +330,7 @@ async function startWork() {
           await handleRun(event);
           break;
         default:
+          log.error(`Unknown event type ${type} of event: ${event}`);
           break;
       }
     } catch (err) {
@@ -328,7 +356,6 @@ async function scheduleEvent(event) {
   }
 
   try {
-    // TODO: refactor
     switch (event.type) {
       case HandlerMsgType.BUILD: workQueue.push(event); break;
       case HandlerMsgType.STOP: await handleStop(event); break;

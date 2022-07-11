@@ -137,7 +137,7 @@ function createRunManager(jobId, runId, runOptions) {
   async function onRunFailFromRunningStatus(errMsg) {
     await cleanBuffer();
     clearTimeout(accessTokenRefreshTimer);
-    await runOptions.onRunFail(jobId, runId, runData, errMsg);
+    await runOptions.onRunFail(runId, runData, errMsg);
   }
 
   /**
