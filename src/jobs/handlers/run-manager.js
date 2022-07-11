@@ -8,6 +8,20 @@ const remotePush = require('../../lib/remotePush');
 const LOG_ID = 'Task-handler';
 
 /**
+ * Run manager is a set of functions which are to be called when a job is being run and
+ * a) a run event happens
+ * b) run ends with success
+ * c) run ends with failure
+ *
+ * The creation of run manager only involves a function closure which encapsulates data
+ * relevant to the particular run requesting the creation of run manager.
+ *
+ * Functions returned by the createRunManager are passed to the run handler which
+ * executes the run (and uses the functions, for example, in the event listeners for
+ * the above-mentioned events)
+ */
+
+/**
  * Store config from job, overwrites old config
  * @param id ID of the job config belongs to
  * @param state Config to store, JSON format
@@ -22,6 +36,12 @@ function parseRequest(req) {
   return JSON.parse(req);
 }
 
+/**
+ * Parses a request string into a parsed request and a response.
+ * @param {string} requestStr
+ * @returns {{request: object, response: object}} If request is null, response contains
+ *  errors encountered when parsing the requestStr.
+ */
 function parseRequestResponse(requestStr) {
   const response = {};
   let request = {};
@@ -46,18 +66,23 @@ function parseRequestResponse(requestStr) {
     return [null, response];
   }
 
-  return [request, response];
+  return { request, response };
 }
 
+/** Processes a raw run request (as picked up).
+ * @returns {Promise<object>} On error, the resulting object's
+ * error key contains the error message.
+ */
 async function handleRequest(jobId, requestStr) {
   // eslint-disable-next-line prefer-const
-  let [request, response] = parseRequestResponse(requestStr);
+  let { request, response } = parseRequestResponse(requestStr);
   if (!request) {
     return response;
   }
 
   try {
     switch (request.type) {
+      // here we only forward the requests to IVIS-core
       case JobMsgType.CREATE_SIGNALS:
         if (request.signalSets || request.signals) {
           const reqResult = await remotePush.requestCreateSig(jobId, request.signalSets, request.signals);
@@ -91,6 +116,14 @@ async function handleRequest(jobId, requestStr) {
   return response;
 }
 
+/**
+ * Creates a closure encapsulating all (future) run data.
+ * @param {number} jobId
+ * @param {number} runId
+ * @param {object} runOptions
+ * @returns {{ onRunEvent: function, onRunSuccess: function, onRunFail: function}}
+ * functions for run data manipulation
+ */
 function createRunManager(jobId, runId, runOptions) {
   const runData = {};
   runData.started_at = new Date();
@@ -109,6 +142,8 @@ function createRunManager(jobId, runId, runOptions) {
       jobId,
       accessToken,
     });
+    // TODO: might be better to make this configurable since the remote run
+    // should require shorter period to account for networking losses
     accessTokenRefreshTimer = setTimeout(refreshAccessToken, 30 * 1000);
   }
 
@@ -118,6 +153,7 @@ function createRunManager(jobId, runId, runOptions) {
     );
   }
 
+  // flushes buffer into db, propagates to IVIS-core
   async function cleanBuffer() {
     try {
       if (outputBuffer.length > 0) {
@@ -134,17 +170,19 @@ function createRunManager(jobId, runId, runOptions) {
     }
   }
 
+  // cleanup + call specified fail handler
   async function onRunFailFromRunningStatus(errMsg) {
     await cleanBuffer();
     clearTimeout(accessTokenRefreshTimer);
+    // TODO move finished_at modification here? (see onRunSuccess)
     await runOptions.onRunFail(runId, runData, errMsg);
   }
 
   /**
-       * Callback for successful run.
-       * @param cfg config
-       * @returns {Promise<void>}
-       */
+     * Callback for successful run. Persists data, propagates to IVIS-core
+     * @param cfg config
+     * @returns {Promise<void>}
+     */
   async function onRunSuccess(cfg) {
     await cleanBuffer();
     clearTimeout(accessTokenRefreshTimer);
@@ -169,7 +207,6 @@ function createRunManager(jobId, runId, runOptions) {
     remotePush.emitRemote(remotePush.getSuccessEventType(runId));
   }
 
-  // eslint-disable-next-line consistent-return
   async function onRunEvent(type, data) {
     switch (type) {
       case 'output':
@@ -177,6 +214,7 @@ function createRunManager(jobId, runId, runOptions) {
           if (!limitReached) {
             const byteLength = Buffer.byteLength(data, 'utf8');
             outputBytes += byteLength;
+
             if (outputBytes >= maxOutput) {
               limitReached = true;
               if (config.jobRunner.printLimitReachedMessage === true) {
@@ -184,6 +222,8 @@ function createRunManager(jobId, runId, runOptions) {
                   await runs.appendOutput(runId, 'INFO: max output storage capacity reached\n');
                   const maxMsg = 'INFO: max output capacity reached';
                   if (!timer) {
+                    // TODO: do we require emissions ordered?
+                    // if yes, this call should be awaited
                     remotePush.emitRemote(remotePush.getOutputEventType(runId), maxMsg);
                   } else {
                     outputBuffer.push(maxMsg);
@@ -195,10 +235,9 @@ function createRunManager(jobId, runId, runOptions) {
             } else {
               outputBuffer.push(data);
               /* Note:
-in the ivis-core version, this (timer reset, periodic cleanbuffer) is here because
-the buffer is being periodically flushed; further investigation is needed as to whether
-there is more than a performance benefit to it
-*/
+              this (timer reset, cleanbuffer after 1s) is here to limit the amount of DB
+              interactions when there is a rapid output generation
+              */
               // TODO Don't know how well this will scale
               // --   it might be better to append to a file, but this will require further syncing
               // --   as we need full output for task development in the UI, not only output after
@@ -218,6 +257,8 @@ there is more than a performance benefit to it
         log.warn(LOG_ID, `Job ${jobId} run ${runId}: unknown event ${type} `);
         break;
     }
+    // only request type is supposed to return something (which it does)
+    return null;
   }
 
   return {
