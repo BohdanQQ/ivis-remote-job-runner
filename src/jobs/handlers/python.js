@@ -47,11 +47,11 @@ function getVenvInitScript(subtype, destDir) {
  * call back
  * @param {string} destDir
  * @param {string} subtype
- * @param {*} onSuccess
- * @param {*} onFail
+ * @param {function} onSuccess
+ * @param {function} onFail
  * @returns {Promise<void>}
  */
-async function buildEnvironment(destDir, subtype, onSuccess, onFail) {
+function buildEnvironment(destDir, subtype, onSuccess, onFail) {
   const virtEnv = spawn(
     getVenvInitScript(subtype, destDir),
     {
@@ -87,9 +87,9 @@ async function buildEnvironment(destDir, subtype, onSuccess, onFail) {
 
 /**
  * Initialize and build task.
- * @param config {*}
- * @param onSuccess Callback on success
- * @param onFail Callback on failed attempt
+ * @param {{subtype: string, code: string, destDir: string}} config
+ * @param {function} onSuccess  Callback on success
+ * @param {function} onFail  Callback on failed attempt
  * @returns {Promise<void>}
  */
 async function init(config, onSuccess, onFail) {
@@ -114,14 +114,14 @@ async function init(config, onSuccess, onFail) {
 // Job Run Management
 // ------------------------
 
+// runId -> process
 const runningJobProcesses = new Map();
 
 /**
- * @param runId used by stop command
- * @param taskDir Directory with the task
- * @param onEvent
- * @param onSuccess Callback on successful run
- * @param onFail callback on failed run
+ * @param {{runId: number, taskDir: string, inputData: object}} runData
+ * @param {function} onEvent
+ * @param {function} onSuccess Callback on successful run
+ * @param {function} onFail callback on failed run
  * @returns {Promise<void>}
  */
 async function run({ runId, taskDir, inputData }, onEvent, onSuccess, onFail) {
@@ -138,7 +138,7 @@ async function run({ runId, taskDir, inputData }, onEvent, onSuccess, onFail) {
     });
 
     // register listeners on a special file descriptor meant for messaging
-    // for more information look into the `helpers.py` IVIS pyhton package file
+    // for more information, look into the `helpers.py` IVIS pyhton package file
     const jobOutStream = readline.createInterface({
       input: jobProc.stdio[IVIS_MESSAGE_FD],
     });
@@ -201,7 +201,7 @@ async function run({ runId, taskDir, inputData }, onEvent, onSuccess, onFail) {
 }
 
 /**
- * @param runId
+ * @param {number} runId
  * @returns {Promise<void>}
  */
 async function stop(runId) {
