@@ -161,7 +161,7 @@ async function run({ runId, taskDir, inputData }, onEvent, onSuccess, onFail) {
     // Error output is just gathered throughout the run and stored after run is done
     // the error output is used only if the job itself has ended unsuccessfully
     jobProc.stderr.on('data', (data) => {
-      errorBuffer += `${data}\n`;
+      errorBuffer += `${data}`;
     });
 
     // Same as with error output
