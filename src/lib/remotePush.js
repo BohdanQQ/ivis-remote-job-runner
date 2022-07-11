@@ -139,7 +139,7 @@ async function runRequest(type, request) {
       return error.response.data;
     }
 
-    log.error('and error ', error);
+    log.error('and an unknown error');
     return {
       error: 'unknown error, see the logs of the corresponding remote executor',
     };
