@@ -12,12 +12,6 @@ const HandlerMsgType = {
   STOP: 2,
 };
 
-const PushType = {
-  STATE_UPDATE: 0, // TODO: push status accoring to IVIS implementation (emit only affects "run job while editing task" scenario)
-  EMIT: 1,
-  REQUEST: 2,
-};
-
 const RequestType = {
   CREATE_SIG: 0,
   STORE_STATE: 1,
@@ -36,7 +30,6 @@ const EventTypes = {
 module.exports = {
   RemoteRunState,
   HandlerMsgType,
-  PushType,
   RequestType,
   EventTypes,
 };

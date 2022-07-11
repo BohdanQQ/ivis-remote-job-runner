@@ -4,6 +4,9 @@ const { HandlerMsgType } = require('../shared/remote-run');
 const workerSource = './src/jobs/remote-job-handler.js';
 const workerProcess = fork(workerSource);
 
+/**
+ * Sends a message to the worker process, rejecting on error
+ */
 function promiseSend(message) {
   return new Promise((resolve, reject) => {
     workerProcess.send(message, (error) => {

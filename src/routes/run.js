@@ -3,11 +3,22 @@ const runs = require('../models/run');
 const { log } = require('../lib/log');
 const { sendStop, sendBuildRunBundle } = require('../lib/worker-process');
 
+/** sends an empty response with an HTTP code */
 function respondWith(code, response) {
   response.status(code);
   response.send('');
 }
 
+/** sends a json response with an HTTP code */
+function jsonRespondWith(code, json, response) {
+  response.status(code);
+  response.json(json);
+}
+/**
+ * Checks that the original request contains a valid runId integer parameter
+ * and adjust response accordingly
+ * @returns {Promise<bool>} validity of runId param
+ */
 async function runIdOk(request, response) {
   if (!hasParam('run_id', request, isInteger)) {
     response.status(400);
@@ -15,14 +26,20 @@ async function runIdOk(request, response) {
   }
   const runId = parseInt(request.params.run_id, 10);
 
-  if (!await runs.existsRun(runId)) {
-    response.status(404);
+  try {
+    if (!await runs.existsRun(runId)) {
+      response.status(404);
+      return false;
+    }
+  } catch (error) {
+    log.log('Exists run error', error);
+    response.status(500);
     return false;
   }
   return true;
 }
 
-function parseErrorResponse(errObj) {
+function commonErrResponseFormat(errObj) {
   return {
     error: `${errObj}`,
   };
@@ -36,12 +53,10 @@ async function stopRun(request, response) {
 
   try {
     await sendStop(runId);
-    response.status(200);
-    response.send('');
+    respondWith(200, response);
   } catch (error) {
     log.log('Stop Request Error', error);
-    response.status(503);
-    response.json(parseErrorResponse(error));
+    jsonRespondWith(503, commonErrResponseFormat(error), response);
   }
 }
 
@@ -60,8 +75,13 @@ async function runStatus(request, response) {
   }
   const runId = parseInt(request.params.run_id, 10);
 
-  response.status(200);
-  response.json(parseRunStatus(await runs.getRunById(runId)));
+  try {
+    const jsonResponse = parseRunStatus(await runs.getRunById(runId));
+    jsonRespondWith(200, jsonResponse, response);
+  } catch (error) {
+    log.error('HTTP GET run status: get run by id error', error);
+    jsonRespondWith(503, commonErrResponseFormat(error), response);
+  }
 }
 
 const RUN_SPEC = {
@@ -88,11 +108,9 @@ async function buildAndRun(request, response) {
 
   try {
     await sendBuildRunBundle(runSpec);
-    response.status(200);
-    response.send('');
+    respondWith(200, response);
   } catch (error) {
-    response.json(parseErrorResponse(error));
-    response.status(503);
+    jsonRespondWith(503, commonErrResponseFormat(error), response);
   }
 }
 
@@ -105,11 +123,9 @@ async function deleteRun(request, response) {
 
   try {
     await runs.removeRun(runId);
-    response.status(200);
-    response.send('');
+    respondWith(200, response);
   } catch (error) {
-    response.status(503);
-    response.json(parseErrorResponse(error));
+    jsonRespondWith(503, commonErrResponseFormat(error), response);
   }
 }
 

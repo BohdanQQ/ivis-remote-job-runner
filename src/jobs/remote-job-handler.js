@@ -256,7 +256,8 @@ async function handleStop(msg) {
         { status: RemoteRunState.RUN_FAIL },
         '',
         cancelledMsg,
-      ));
+      ))
+      .catch((error) => log.error('stop handling error:', error));
   };
   // remove from queue or stop via corresponding handler
   if (index !== -1) {

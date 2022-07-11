@@ -1,5 +1,6 @@
 const config = require('./lib/config');
 const appBuild = require('./app-build');
+const { log } = require('./lib/log');
 
 function main() {
   const app = appBuild();
@@ -7,7 +8,7 @@ function main() {
   const host = '0.0.0.0';
 
   app.listen(config.jobRunner.port, host, () => {
-    console.log(`IVIS Job runner is listening on ${host}:${config.jobRunner.port}`);
+    log.debug(`IVIS Job runner is listening on ${host}:${config.jobRunner.port}`);
   });
 }
 
