@@ -51,7 +51,8 @@ function getBuildPromise(type, subtype, code, destDir, runId, taskId) {
     });
     return invalidateBuildCache(taskId);
   }
-  return new Promise((resolve) => {
+  // invalidate cache first just to be sure
+  return invalidateBuildCache(taskId).then(() => new Promise((resolve) => {
     handler.init(
       {
         subtype,
@@ -76,11 +77,11 @@ function getBuildPromise(type, subtype, code, destDir, runId, taskId) {
           warn,
           err: errs,
         });
-        // making sure previously cached build becomes invalid
+        // making sure cache stays invalid
         invalidateBuildCache(taskId, warn, errs).then(resolve);
       },
     );
-  });
+  }));
 }
 
 /**
