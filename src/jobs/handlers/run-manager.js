@@ -96,7 +96,7 @@ async function handleRequest(jobId, requestStr) {
         break;
       case JobMsgType.STORE_STATE:
         if (request[STATE_FIELD]) {
-          const reqResult = await remotePush.requestStoreState(jobId, request[STATE_FIELD]);
+          const reqResult = await remotePush.requestStoreState(jobId, request);
           response = {
             ...response,
             ...reqResult,

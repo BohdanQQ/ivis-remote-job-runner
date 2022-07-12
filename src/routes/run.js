@@ -2,6 +2,7 @@ const { hasParam, walkObject, isInteger } = require('../lib/util');
 const runs = require('../models/run');
 const { log } = require('../lib/log');
 const { sendStop, sendBuildRunBundle } = require('../lib/worker-process');
+const { defaultSubtypeKey } = require('../shared/tasks');
 
 /** sends an empty response with an HTTP code */
 function respondWith(code, response) {
@@ -86,8 +87,7 @@ async function runStatus(request, response) {
 
 const RUN_SPEC = {
   taskId: 'int',
-  subtype: 'str',
-  type: 'int',
+  type: 'str',
   code: 'str',
   runId: 'int',
   jobId: 'int',
@@ -105,6 +105,11 @@ async function buildAndRun(request, response) {
   }
 
   const runSpec = request.body;
+  if (runSpec.subtype !== undefined && typeof (runSpec.subtype) !== 'string') {
+    respondWith(400, response);
+    return;
+  }
+  runSpec.subtype = runSpec.subtype || defaultSubtypeKey;
 
   try {
     await sendBuildRunBundle(runSpec);

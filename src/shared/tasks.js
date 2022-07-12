@@ -7,7 +7,7 @@ const PythonSubtypes = {
 };
 
 const TaskType = {
-  PYTHON: 0,
+  PYTHON: 'python',
 };
 
 const PYTHON_JOB_FILE_NAME = 'job.py';
