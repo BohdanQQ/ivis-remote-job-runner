@@ -6,8 +6,8 @@ services:
       - ./proxyCfg/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./cert/:/opt/cert:ro
     container_name: rje-nginx
-    # networks:
-    #   ivis-containerized_ivis-net:
+    networks:
+      ivis-containerized_ivis-net:
     ports:
       - 9088:9088
     depends_on:
@@ -26,10 +26,10 @@ services:
       - ./setup/jobs:/opt/ivis-remote/setup/jobs
     container_name: ivis-remote-runner
 
+    networks:
+      ivis-containerized_ivis-net:
 # attach to external network to test functionality
-#     networks:
-#       ivis-containerized_ivis-net:
 
-# networks:
-#   ivis-containerized_ivis-net:
-#     external: true
+networks:
+  ivis-containerized_ivis-net:
+    external: true

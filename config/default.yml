@@ -1,24 +1,24 @@
 # all paths are relative to the project root
 ivisCore:
-  trustedIPOrName: 0.0.0.0
+  trustedIPOrName: ivis.tapache
   # the IVIS-core port designated for remote-worker communication
   # (emulation of run-manager emitted messages to the IVIS-core)
   # (if IVIS-core supports HTTPS) communication on this port is only 
   # allowed using the worker's client certificate
-  trustedAuthPort: 9080
-  sandboxIPOrName: 0.0.0.0
+  trustedAuthPort: 443
+  sandboxIPOrName: sbox.tapache
   # TODO: uses HTTPS client-cert or not? (reminder... tokens!)
-  sandboxPort: 9081
+  sandboxPort: 8444
   # same limitations as above
   es:
-    host: 0.0.0.0
-    port: 9200
+    host: ivis.tapache
+    port: 8446
   # use local CA when PERFORMING REQUESTS to accept a locally-issued certificate
   # e.g. when not running on the internet
   # set to false if the IVIS-core server certificate may be verified normally 
   # (using global certificate chain of trust)
   useLocalCA: true
-  CACert: ./cert/ca.cert.pem
+  CACert: ./cert/ca.cert
   venvCmd: 'python3 -m venv'
 
 jobRunner:
@@ -29,14 +29,14 @@ jobRunner:
   # IVIS-core-issued server certificate
   # (used when IVIS-core sends requests to the worker)
   serverCert:
-    certPath: ./cert/runner.cert.pem
-    keyPath:  ./cert/runner.key.insecure
+    certPath: ./cert/rje.cert
+    keyPath:  ./cert/rje.pem
   # IVIS-core-issued client certificate
   # (used when the worker sends requests to IVIS-core)
   clientCert:
-    certPath: ./cert/runner.cert.pem
-    keyPath:  ./cert/runner.key.insecure
-  port: 443
+    certPath: ./cert/rje.cert
+    keyPath:  ./cert/rje.pem
+  port: 8080
   machineId: 0
   maxJobOutput: 1000000
   # in seconds
@@ -44,7 +44,7 @@ jobRunner:
   printLimitReachedMessage: true
   messagePush:
     # how many times a message push will be retried in case of failure
-    maxRetryCount: 2
+    maxRetryCount: 0
     # in seconds
     retryInterval: 1
-    pushDestination: "/rc/push"
+    pushDestination: "/rest/remote"
