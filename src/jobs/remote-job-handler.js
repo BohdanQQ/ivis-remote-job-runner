@@ -168,11 +168,6 @@ async function handleRun({
     jobId,
   },
 }) {
-  // here we expect only one IVIS-core instance will use the the remote runner
-  // (that runId will be unique for each run, or at least that 2 duplicate ids
-  // won't exist at the same time)
-  await runs.createRun(runId);
-
   const afterRunData = afterBuildMessage.get(runId);
   if (!afterRunData) {
     await runs.changeState(runId, RemoteRunState.RUN_FAIL);
@@ -360,7 +355,14 @@ async function scheduleEvent(event) {
     switch (event.type) {
       case HandlerMsgType.BUILD: workQueue.push(event); break;
       case HandlerMsgType.STOP: await handleStop(event); break;
-      case HandlerMsgType.RUN: workQueue.push(event); break;
+      case HandlerMsgType.RUN: {
+        await runs.createRun(event.spec.runId);
+        // around this point, a build for a different code can be enqueued
+        // before this run event is pushed -> run will be executed using different
+        // source code (thus scheduleBuildRunBundle)
+        workQueue.push(event);
+        break;
+      }
       default: log.log(`Unknown event type ${event.type}`); return;
     }
   } catch (err) {
@@ -368,15 +370,23 @@ async function scheduleEvent(event) {
   }
 }
 
+// this is specifically for build and run
+// since the code execution for enqueueing [build, run] won't
+// run into an await, it is guaranteed that build and run will happen in
+// the exact order "build -> run" with no other builds in between
+// also the correct order of CREATE RUN -> run is ensured
+async function scheduleBuildRunBundle([buildMsg, runMsg]) {
+  // here we expect only one IVIS-core instance will use the the remote runner
+  // (that runId will be unique for each run, or at least that 2 duplicate ids
+  // won't exist at the same time)
+  await runs.createRun(runMsg.spec.runId);
+  workQueue.push(buildMsg);
+  workQueue.push(runMsg);
+}
+
 process.on('message', (msg) => {
   if (msg instanceof Array) {
-    // this is specifically for build and run
-    // since the code execution for enqueueing [build, run] won't
-    // run into an await, it is guaranteed that build and run will happen in
-    // the exact order "build -> run" with no other builds in between
-    msg.forEach((event) => {
-      scheduleEvent(event);
-    });
+    scheduleBuildRunBundle(msg);
   } else {
     scheduleEvent(msg);
   }
