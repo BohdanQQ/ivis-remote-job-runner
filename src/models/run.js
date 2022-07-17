@@ -72,6 +72,10 @@ function getRunStatusFromData(runData) {
   return runData.status;
 }
 
+function getFinishedTimeFromData(runData) {
+  return runData.finished_at;
+}
+
 /**
  * Updates only the run status
  * @param {number} runId
@@ -176,6 +180,7 @@ module.exports = {
   getRunById,
   removeRun,
   getRunStatusFromData,
+  getFinishedTimeFromData,
   createRun,
   changeState,
   setOutput,

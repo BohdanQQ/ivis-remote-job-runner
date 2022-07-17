@@ -66,6 +66,7 @@ function parseRunStatus({ output, runData, errMsg }) {
     status: runs.getRunStatusFromData(runData),
     output,
     error: errMsg,
+    finished_at: runs.getFinishedTimeFromData(runData),
   };
 }
 
