@@ -1,8 +1,11 @@
 const config = require('./lib/config');
 const appBuild = require('./app-build');
 const { log } = require('./lib/log');
+const runInit = require('./lib/run').init;
 
-function main() {
+async function main() {
+  log.log('Reseting runs');
+  await runInit();
   const app = appBuild();
 
   const host = '0.0.0.0';
