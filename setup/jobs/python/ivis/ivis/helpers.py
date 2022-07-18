@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import requests
+import certifi
 
 from .exceptions import *
 
@@ -28,6 +29,20 @@ class Ivis:
         self._accessToken = self._data['accessToken']
         self._jobId = self._data['context']['jobId']
         self._sandboxUrlBase = self._data['server']['sandboxUrlBase']
+        self._trustedUrlBase = self._data['server']['trustedUrlBase']
+
+# this might result (>1 parallel runs) in more tasks writing the same CA into the certifi file 
+        try:
+            requests.get(self._trustedUrlBase)
+        except requests.exceptions.SSLError as err:
+            ca_cert_str = ""
+            with open(ca_path, 'r') as ca_file:
+                ca_cert_str = ca_file.read()
+            
+            cafile = certifi.where()
+            with open(cafile, 'a') as outfile:
+                outfile.write('\n')
+                outfile.write(ca_cert_str)
 
     @property
     def elasticsearch(self):
