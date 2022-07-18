@@ -7,8 +7,7 @@ ivisCore:
   # allowed using the worker's client certificate
   trustedAuthPort: 443
   sandboxIPOrName: sbox.tapache
-  # TODO: uses HTTPS client-cert or not? (reminder... tokens!)
-  sandboxPort: 8444
+  sandboxPort: 443
   # same limitations as above
   es:
     host: ivis.tapache
