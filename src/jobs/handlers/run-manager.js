@@ -222,8 +222,7 @@ function createRunManager(jobId, runId, runOptions) {
                   await runs.appendOutput(runId, 'INFO: max output storage capacity reached\n');
                   const maxMsg = 'INFO: max output capacity reached';
                   if (!timer) {
-                    // TODO: do we require emissions ordered?
-                    // if yes, this call should be awaited
+                    // didn't see an issue with NOT awaiting this...
                     remotePush.emitRemote(remotePush.getOutputEventType(runId), maxMsg);
                   } else {
                     outputBuffer.push(maxMsg);
