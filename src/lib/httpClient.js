@@ -14,13 +14,18 @@ const certPaths = {
   cliKey: getPathFromConfigPath(config.jobRunner.clientCert.keyPath),
 };
 
-const httpsAgent = config.jobRunner.useCertificates ? new https.Agent({
-  // directly forces this to be the only certificate authority for upcoming requests
-  // this CA takes care of SERVER certificate verification
-  ca: fs.readFileSync(certPaths.ca),
-  cert: fs.readFileSync(certPaths.cliCert),
-  key: fs.readFileSync(certPaths.cliKey),
-})
+const agentConf = {
+    cert: fs.readFileSync(certPaths.cliCert),
+    key: fs.readFileSync(certPaths.cliKey),
+};
+
+if (config.ivisCore.useLocalCA) {
+    // directly forces this to be the only certificate authority for upcoming requests
+    // this CA takes care of SERVER certificate verification
+    agentConf.ca = fs.readFileSync(certPaths.ca);
+}
+
+const httpsAgent = config.jobRunner.useCertificates ? new https.Agent(agentConf)
   : null;
 
 if (!config.jobRunner.useCertificates) {

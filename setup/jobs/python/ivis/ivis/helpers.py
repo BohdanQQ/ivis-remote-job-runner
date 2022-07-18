@@ -15,11 +15,37 @@ class Ivis:
     def __init__(self):
         self._data = json.loads(sys.stdin.readline())
         esUrl = str(self._data['es']['host']) + ":" + str(self._data['es']['port'])
+        ca_path = self._data['caPath']
+        # a flag inidicating whether to inject the CA certificate or not 
+        set_ca = False
+        self._trustedUrlBase = self._data['server']['trustedUrlBase']
+
+        # this might result (>1 parallel runs) in more tasks writing the same CA into the certifi file 
+        try:
+            # try to resolve IVIS
+            requests.get(self._trustedUrlBase)
+        except requests.exceptions.SSLError as err:
+            # on SSL failure, inject certificate
+            # this should happen only once
+            # when the CA is injected, subsequent requests should succeed
+            set_ca = True
+            ca_cert_str = ""
+            with open(ca_path, 'r') as ca_file:
+                ca_cert_str = ca_file.read()
+            
+            cafile = certifi.where()
+            with open(cafile, 'a') as outfile:
+                outfile.write('\n')
+                outfile.write(ca_cert_str)
+
         if self._data['certs']:
-            ca_path = self._data['caPath']
             cert_path = self._data['certPath']
             key_path = self._data['keyPath']
-            self._elasticsearch = Elasticsearch(esUrl, use_ssl=True, ca_certs=ca_path, client_cert=cert_path, client_key=key_path, verify_certs=True)
+            # CA injection needed also for the elasticsearch client
+            if set_ca:
+                self._elasticsearch = Elasticsearch(esUrl, use_ssl=True, ca_certs=ca_path, client_cert=cert_path, client_key=key_path, verify_certs=True)
+            else:
+                self._elasticsearch = Elasticsearch(esUrl, use_ssl=True, client_cert=cert_path, client_key=key_path, verify_certs=True)
         else:
             self._elasticsearch = Elasticsearch([esUrl])
         self.state = self._data.get('state')
@@ -29,20 +55,7 @@ class Ivis:
         self._accessToken = self._data['accessToken']
         self._jobId = self._data['context']['jobId']
         self._sandboxUrlBase = self._data['server']['sandboxUrlBase']
-        self._trustedUrlBase = self._data['server']['trustedUrlBase']
 
-# this might result (>1 parallel runs) in more tasks writing the same CA into the certifi file 
-        try:
-            requests.get(self._trustedUrlBase)
-        except requests.exceptions.SSLError as err:
-            ca_cert_str = ""
-            with open(ca_path, 'r') as ca_file:
-                ca_cert_str = ca_file.read()
-            
-            cafile = certifi.where()
-            with open(cafile, 'a') as outfile:
-                outfile.write('\n')
-                outfile.write(ca_cert_str)
 
     @property
     def elasticsearch(self):
