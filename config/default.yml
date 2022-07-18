@@ -28,13 +28,15 @@ jobRunner:
   # IVIS-core-issued server certificate
   # (used when IVIS-core sends requests to the worker)
   serverCert:
-    certPath: ./cert/rje.cert
-    keyPath:  ./cert/rje.pem
+    certPath: ./cert/rjr.cert
+    keyPath:  ./cert/rjr.pem
   # IVIS-core-issued client certificate
   # (used when the worker sends requests to IVIS-core)
   clientCert:
-    certPath: ./cert/rje.cert
-    keyPath:  ./cert/rje.pem
+    certPath: ./cert/rjr.cert
+    keyPath:  ./cert/rjr.pem
+  # this one should not really change when using docker, 
+  # since it is very much internal to the docker compose setup 
   port: 8080
   machineId: 0
   maxJobOutput: 1000000

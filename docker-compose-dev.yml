@@ -1,18 +1,17 @@
 version: '3'
 services:
-  rje:
+  rjr-proxy:
     image: nginx
     volumes:
       - ./proxyCfg/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./cert/:/opt/cert:ro
-    container_name: rje-nginx
-    networks:
-      ivis-containerized_ivis-net:
+    container_name: rjr-proxy
     ports:
-      - 9088:9088
+      # in IVIS-core 9090 should be set as the executor port parameter
+      - 9090:9443 # 9443 corresponds with the proxy setting in nginx.conf!
     depends_on:
-      - ivis-remote-runner
-  ivis-remote-runner:
+      - rjr
+  rjr:
     build:
       context: ./
       dockerfile: ./Dockerfile-dev
@@ -24,12 +23,12 @@ services:
       - ./config:/opt/ivis-remote/config
       - ./cert:/opt/ivis-remote/cert
       - ./setup/jobs:/opt/ivis-remote/setup/jobs
-    container_name: ivis-remote-runner
+    container_name: rjr
 
-    networks:
-      ivis-containerized_ivis-net:
-# attach to external network to test functionality
+# attach to external network to test functionality (do not forget about the proxy)
+    # networks:
+    #   ivis-containerized_ivis-net:
 
-networks:
-  ivis-containerized_ivis-net:
-    external: true
+# networks:
+#   ivis-containerized_ivis-net:
+#     external: true
