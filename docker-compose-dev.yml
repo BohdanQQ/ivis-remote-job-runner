@@ -3,13 +3,14 @@ services:
   rjr-proxy:
     image: nginx
     volumes:
-      - ./proxyCfg/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/devel.nginx.conf:/etc/nginx/nginx.conf:ro
       - ./cert/:/opt/cert:ro
     container_name: rjr-proxy
       # in IVIS-core 9090 should be set as the executor port parameter
       # (not when running on the same docker network - in that case, you don't need to expose the port)
-    # ports:
-    #   - 9090:9443 # 9443 corresponds with the proxy setting in nginx.conf!
+    ports:
+      - "127.0.0.1:9088:9088" # uncomment to expose the development backdoor
+      # - 9090:9443 # 9443 corresponds with the proxy setting in nginx.conf! should not be needed
     depends_on:
       - rjr
     networks:

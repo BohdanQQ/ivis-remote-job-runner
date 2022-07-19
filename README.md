@@ -23,7 +23,7 @@ Finally use `docker compose` to run the container:
 
 ### Development version
 
-Check (and edit) the `config/default.yml` config file and the `nginx.conf` file. 
+Check (and edit) the `config/default.yml` config file and the `devel.nginx.conf` file. 
 
 Finally use `docker compose` to run the container:
 
