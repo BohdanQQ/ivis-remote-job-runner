@@ -4,13 +4,7 @@
 
 To run tests, execute `npm test`.
 
-## Development with Docker
 
-check (and edit) the `config/default.yml` config file 
-
-finally use `docker-compose` to run the container:
-
-    docker compose -f ./docker-compose-dev.yml up --build
 
 ## Setup
 
@@ -20,4 +14,17 @@ Create `cert` folder in the project root. In this folder, create files:
 * `rjr.cert` - executor certificate
 * `rjr.pem` - executor key
 
-Run TODO
+### Normal setup
+Check (and edit) the `config/default.yml` config file and the `nginx.conf` file. 
+
+Finally use `docker compose` to run the container:
+
+    docker compose up --build
+
+### Development version
+
+Check (and edit) the `config/default.yml` config file and the `nginx.conf` file. 
+
+Finally use `docker compose` to run the container:
+
+    docker compose -f ./docker-compose-dev.yml up --build
