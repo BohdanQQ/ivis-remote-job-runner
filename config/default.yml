@@ -1,0 +1,52 @@
+# all paths are relative to the project root
+ivisCore:
+  trustedIPOrName: ivis.name.com
+  trustedAuthPort: 443
+  
+  sandboxIPOrName: sbox.name.com
+  sandboxPort: 443
+
+  es:
+    host: ivis.name.com
+    port: 8446
+  # use local CA when PERFORMING REQUESTS to accept a locally-issued certificate
+  # e.g. when not running on the internet...
+  # Set to false if the IVIS-core server certificate may be verified normally 
+  # (using global certificate chain of trust)
+  useLocalCA: true
+  CACert: ./cert/ca.cert
+  venvCmd: 'python3 -m venv'
+
+jobRunner:
+
+ # should always be true, is here just in case it is needed in the future
+  useCertificates: true
+  # IVIS-core-issued server certificate
+  # (used when IVIS-core sends requests to the runner)
+  serverCert:
+    certPath: ./cert/rjr.cert
+    keyPath:  ./cert/rjr.pem
+
+  # IVIS-core-issued client certificate
+  # (used when the runner sends requests to IVIS-core)
+  # may be identical to server certificate
+  clientCert:
+    certPath: ./cert/rjr.cert
+    keyPath:  ./cert/rjr.pem
+  
+  # this one should not really change when using docker, 
+  # since it is very much internal to the docker compose setup 
+  port: 8080
+
+  # in case certificate serial number is not used for some reason
+  machineId: 0
+
+  maxJobOutput: 1000000
+  
+  workCheckInterval: 5 # seconds
+  printLimitReachedMessage: true
+  messagePush:
+    # how many times a message push will be retried in case of failure
+    maxRetryCount: 0
+    retryInterval: 1 # seconds
+    pushDestination: "/rest/remote"

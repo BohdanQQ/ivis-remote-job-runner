@@ -1,0 +1,171 @@
+openapi: 3.0.0
+info:
+  description: IVIS Remote Job Runner
+  version: 0.0.1
+  title: IVIS Remote Job Runner
+  license:
+    name: MIT
+paths:
+  '/run/{run_id}/stop':
+    post:
+      x-openapi-router-controller: controllers.runs
+      summary: Stop a run
+      operationId: stopRun
+      parameters:
+        - in: path
+          name: run_id
+          description: Run ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success, returns supplied Run
+        '400':
+          description: Invalid Request
+        '404':
+          description: Run under specified ID was not Found
+        '503':
+          description: The command could not be executed 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMsg'
+  '/run/{run_id}':
+    get:
+      x-openapi-router-controller: controllers.runs
+      summary: Query Run Status 
+      operationId: getStatus
+      parameters:
+        - in: path
+          name: run_id
+          description: Run ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success, returns supplied Run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunData'
+        '400':
+          description: Invalid Request        
+        '404':
+          description: Run under specified ID was not Found
+                
+    post:
+      x-openapi-router-controller: controllers.runs
+      summary: Run a job 
+      operationId: buildAndRun
+      requestBody:
+        $ref: '#/components/requestBodies/JobRun'
+      parameters:
+        - in: path
+          name: run_id
+          description: Run ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success, job has been enqueued to be run 
+        '400':
+          description: Invalid Request
+        '503':
+          description: The run could not be enqueued 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMsg'
+                
+    delete:
+      x-openapi-router-controller: controllers.runs
+      summary: Irrevertibly delete all run-associated data from the job runner 
+      operationId: deleteRun
+      parameters:
+        - in: path
+          name: run_id
+          description: Run ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Invalid Request
+        '404':
+          description: Run under specified ID was not Found
+        '503':
+          description: The run could not be deleted 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMsg'
+
+components:
+  requestBodies:
+    JobRun:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/JobRunBody'
+      description: Job data
+      required: true
+  schemas:
+    JobRunBody:
+      type: object
+      properties:
+        taskId:
+          type: integer
+          description: Unique identifier of a task
+        subtype:
+          type: integer
+          description: Task Subtype as defined in shared definitions
+        type:
+          type: integer
+          description: Task Type as defined in the shared definitions
+        code:
+          type: string
+          description: The code of the task
+        runId:
+          type: integer
+          description: Run ID to be assigned for the run
+        jobId:
+          type: integer
+          description: "Job ID associated with the run, might be removed later"
+        params:
+          type: object
+          description: Job paremeters as needed by the backend
+        entities:
+          type: object
+          description: Job entities as needed by the backend
+        owned:
+          type: object
+          description: Job-owned entities as needed by the backend
+        accessToken:
+          type: object
+          description: A string or null value        
+        state:
+          type: object
+          description: Job state as needed by the backend
+    RunData:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: Run status as defined in shared definitions
+        output:
+          type: string
+          description: Collected standard output content
+        error:
+          type: string
+          description: Collected standard error content
+    ErrorMsg:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message

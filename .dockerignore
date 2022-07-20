@@ -1,0 +1,9 @@
+docker-compose-dev.yml
+docker-compose.yml
+Dockerfile-dev
+Dockerfile
+data/
+files/
+cert/
+node_modules
+npm-debug.log

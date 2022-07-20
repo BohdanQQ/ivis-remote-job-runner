@@ -1,0 +1,49 @@
+{
+  "name": "ivis-remote-job-runner",
+  "version": "0.0.1",
+  "description": "A remote job runner which enables ivis-core to run jobs on remotely accessible machines.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "npx mocha",
+    "watch": "npx nodemon src/index.js",
+    "watch-docker": "npx nodemon src/index.js --legacy-watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BohdanQQ/ivis-remote-job-runner.git"
+  },
+  "keywords": [
+    "ivis",
+    "ivis-core",
+    "\"remote",
+    "job\""
+  ],
+  "author": "Roman Vasut",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BohdanQQ/ivis-remote-job-runner/issues"
+  },
+  "homepage": "https://github.com/BohdanQQ/ivis-remote-job-runner#readme",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "child_process": "^1.0.2",
+    "code-point-at": "^2.0.0",
+    "config": "^3.3.7",
+    "express": "^4.17.3",
+    "fs": "*",
+    "js-yaml": "^4.1.0",
+    "knex": "^0.95.15",
+    "knex-migrate": "^1.7.4",
+    "number-is-nan": "^3.0.0",
+    "readline": "^1.3.0",
+    "sqlite3": "^5.0.2"
+  },
+  "devDependencies": {
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^5.2.0",
+    "mocha": "^9.2.2",
+    "nodemon": "^2.0.16"
+  }
+}

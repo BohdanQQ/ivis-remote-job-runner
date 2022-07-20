@@ -1,3 +1,11 @@
+/cert
+/files
+data/db.db
+data/test/test.db
+/certs
+/setup/jobs/python/ivis/build
+/setup/jobs/python/ivis/dist
+/setup/jobs/python/ivis/ivis.egg-info
 # Logs
 logs
 *.log
