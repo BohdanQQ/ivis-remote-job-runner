@@ -17,6 +17,8 @@ Create `cert` folder in the project root. In this folder, create files:
 ### Normal setup
 Check (and edit) the `config/default.yml` config file and the `nginx.conf` file. 
 
+Specifically, be sure you understand and set correctly the `default.yml`'s `useLocalCA` setting. For example, if your IVIS-core instance has a Certbot-issued certificate configured, set it to `false`. 
+
 Finally use `docker compose` to run the container:
 
     docker compose up --build

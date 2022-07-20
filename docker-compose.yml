@@ -1,0 +1,26 @@
+version: '3'
+services:
+  rjr-proxy:
+    restart: always
+    image: nginx
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./cert/:/opt/cert:ro
+      # in IVIS-core 9090 should be set as the executor port parameter
+    ports:
+      - 9090:9443 # 9443 corresponds with the proxy setting in nginx.conf!
+    depends_on:
+      - rjr
+
+  rjr:
+    restart: always
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    volumes:
+    # database directory
+      - ./data:/opt/ivis-remote/data
+    # job files, builds
+      - ./files:/opt/ivis-remote/files
+      - ./config/default.yml:/opt/ivis-remote/config/default.yml
+      - ./cert:/opt/ivis-remote/cert

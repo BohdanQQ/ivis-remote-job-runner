@@ -1,8 +1,7 @@
 docker-compose-dev.yml
-docker-compose-prod.yml
+docker-compose.yml
 Dockerfile-dev
-Dockerfile-prod
-src/
+Dockerfile
 data/
 files/
 cert/
