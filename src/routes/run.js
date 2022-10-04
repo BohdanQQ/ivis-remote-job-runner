@@ -110,6 +110,15 @@ async function buildAndRun(request, response) {
     respondWith(400, response);
     return;
   }
+
+  // TODO: remove RunId from request body & inject the query runId into the runSpec
+  const qryRunId = parseInt(request.params.run_id, 10);
+  const bodyRunId = parseInt(request.body.runId, 10);
+  if (qryRunId !== bodyRunId) {
+    jsonRespondWith(400, commonErrResponseFormat('Inconsistent run request parameters - run ID'), response);
+    return;
+  }
+
   runSpec.subtype = runSpec.subtype || defaultSubtypeKey;
 
   try {
