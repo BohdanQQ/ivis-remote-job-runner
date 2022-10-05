@@ -10,12 +10,12 @@ const CACHE_TABLE = 'task_build_cache';
 const HASH_INPUT_ENCODING = 'utf-8';
 const HASH_OUTPUT_ENCODING = 'hex';
 
-function getCodeHash(code) {
-  return crypto.createHash('sha512').update(code, HASH_INPUT_ENCODING).digest(HASH_OUTPUT_ENCODING);
+function getCodeHash(codeBuff) {
+  return crypto.createHash('sha512').update(codeBuff, HASH_INPUT_ENCODING).digest(HASH_OUTPUT_ENCODING);
 }
 
-async function isBuildCached(taskId, type, subtype, code) {
-  const hashedCode = getCodeHash(code, HASH_INPUT_ENCODING);
+async function isBuildCached(taskId, type, subtype, codeBuff) {
+  const hashedCode = getCodeHash(codeBuff, HASH_INPUT_ENCODING);
 
   const cacheEntry = await knex(CACHE_TABLE)
     .where(TID_COLUMN, taskId)

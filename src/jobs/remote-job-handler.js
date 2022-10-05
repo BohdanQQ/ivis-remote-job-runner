@@ -33,14 +33,14 @@ handlerMap.set(TaskType.PYTHON, pythonHandler);
  * Builds a task
  * @param {number} type see shared/tasks
  * @param {string} subtype see shared/tasks
- * @param {string} code task code
+ * @param {object} codeArchiveBuff code archive stored in a buffer object
  * @param {string} destDir directory where the task shall be built
  * @param {number} runId runId associated with this build
  * @param {number} taskId
  * @returns {Promise<void>} A promise which never rejects, builds supplied task and saves
  * the last build result (a success flag with output) to the afterBuildMessage map.
  */
-function getBuildPromise(type, subtype, code, destDir, runId, taskId) {
+function getBuildPromise(type, subtype, codeArchiveBuff, destDir, runId, taskId) {
   // this promise never rejects! (only resolves or is unresolved forever - which would be a bug)
   const handler = handlerMap.get(type);
   if (handler === undefined) {
@@ -56,7 +56,7 @@ function getBuildPromise(type, subtype, code, destDir, runId, taskId) {
     handler.init(
       {
         subtype,
-        code,
+        codeArchiveBuff,
         destDir,
       },
       (warnings) => {
@@ -66,7 +66,7 @@ function getBuildPromise(type, subtype, code, destDir, runId, taskId) {
           warn,
           err: '',
         });
-        updateBuildCache(taskId, type, subtype, code, warn)
+        updateBuildCache(taskId, type, subtype, codeArchiveBuff, warn)
           .then(resolve);
       },
       (warnings, errors) => {
@@ -94,11 +94,12 @@ async function handleBuild({
     taskId,
     type,
     subtype,
-    code,
+    codeArchive,
     runId,
   },
 }) {
-  if (await isBuildCached(taskId, type, subtype, code)) {
+  const codeBuff = Buffer.from(codeArchive);
+  if (await isBuildCached(taskId, type, subtype, codeBuff)) {
     afterBuildMessage.set(runId, {
       run: true,
       warn: '',
@@ -106,7 +107,7 @@ async function handleBuild({
     });
     return;
   }
-  await getBuildPromise(type, subtype, code, `${BUILD_DIR_PATH}/${taskId}`, runId, taskId);
+  await getBuildPromise(type, subtype, codeBuff, `${BUILD_DIR_PATH}/${taskId}`, runId, taskId);
 }
 
 /**

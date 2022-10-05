@@ -89,7 +89,10 @@ async function runStatus(request, response) {
 const RUN_SPEC = {
   taskId: 'int',
   type: 'str',
-  code: 'str',
+  codeArchive: {
+    type: 'str',
+    data: 'ignore',
+  },
   runId: 'int',
   jobId: 'int',
   params: 'ignore',
