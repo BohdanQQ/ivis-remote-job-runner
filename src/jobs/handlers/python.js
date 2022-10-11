@@ -87,8 +87,7 @@ function buildEnvironment(destDir, subtype, onSuccess, onFail) {
 
 async function extractArchive(archivePath, destinationPath) {
   const extractCommand = `tar -xf ${archivePath} --directory=${destinationPath}`;
-  // TODO LOGGING
-  console.log(`Extraction Command: ${extractCommand}`);
+  log.info(`Extraction Command: ${extractCommand}`);
   return new Promise((resolve, reject) => {
     exec(extractCommand)
       .on('error', (err) => reject(err))
@@ -97,7 +96,6 @@ async function extractArchive(archivePath, destinationPath) {
           resolve();
           return;
         }
-        // TODO log err
         reject(new Error(`Extraction process exited with code ${code} and signal ${signal}}`));
       });
   });
