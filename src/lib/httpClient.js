@@ -14,24 +14,25 @@ const certPaths = {
   cliKey: getPathFromConfigPath(config.jobRunner.clientCert.keyPath),
 };
 
-const agentConf = {
+function getCertificateAgent() {
+  const agentConf = {
     cert: fs.readFileSync(certPaths.cliCert),
     key: fs.readFileSync(certPaths.cliKey),
-};
+  };
 
-if (config.ivisCore.useLocalCA) {
+  if (config.ivisCore.useLocalCA) {
     // directly forces this to be the only certificate authority for upcoming requests
     // this CA takes care of SERVER certificate verification
     agentConf.ca = fs.readFileSync(certPaths.ca);
+  }
+  return new https.Agent(agentConf);
 }
 
-const httpsAgent = config.jobRunner.useCertificates ? new https.Agent(agentConf)
+const httpsAgent = config.jobRunner.useCertificates ? getCertificateAgent()
   : null;
 
 if (!config.jobRunner.useCertificates) {
-  console.warn('\n\n\n--------------------------------------------------------------------------------------------------------------------------');
-  console.warn('\n\n\nWARNING: USING INSECURE HTTP CLIENT - CERTIFICATES ARE IGNORED AND ANYTHING CAN COMMUNICATE WITH THIS MACHINE\n\n\n');
-  console.warn('\n\n\n--------------------------------------------------------------------------------------------------------------------------');
+  console.warn('WARNING: USING INSECURE HTTP CLIENT - CERTIFICATES ARE IGNORED AND ANYTHING CAN COMMUNICATE WITH THIS MACHINE');
 }
 
 const instance = config.jobRunner.useCertificates ? axios.create({ httpsAgent }) : axios.create();
