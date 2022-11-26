@@ -6,6 +6,8 @@ const { log } = require('./log');
 
 const { maxRetryCount, retryInterval, pushDestination } = config.jobRunner.messagePush;
 const { trustedIPOrName, trustedAuthPort } = config.ivisCore;
+const isPoolPeer = config.jobRunner.isPoolPeer || false;
+const poolSchedulingPort = config.jobRunner.schedulingTrustedPort || 0;
 const MILIS_RETRY_TIME = retryInterval * 1000;
 
 /**
@@ -16,6 +18,12 @@ function getIVIScoreUrl(path) {
   const PROTOCOL = config.jobRunner.useCertificates ? 'https' : 'http';
   const PUSH_URL_BASE = `${PROTOCOL}://${trustedIPOrName}:${trustedAuthPort}${pushDestination}/`;
   return `${PUSH_URL_BASE}${path}`;
+}
+// TODO refactor
+function getPoolSchedulingUrl(path) {
+  const PROTOCOL = config.jobRunner.useCertificates ? 'https' : 'http';
+  const SCHED_URL_BASE = `${PROTOCOL}://${trustedIPOrName}:${poolSchedulingPort}${pushDestination}/`;
+  return `${SCHED_URL_BASE}${path}`;
 }
 
 /**
@@ -103,6 +111,10 @@ function getFailEventType(runId) {
 function getSuccessEventType(runId) {
   return `run/${runId}/${EventTypes.SUCCESS}`;
 }
+
+function isEventType(eventType, expectedType) {
+  return eventType.endsWith(`${expectedType}`);
+}
 /**
  * Sends emission emulation request to the IVIS-core instance
  * @param {string} eventType, use the get...EventType functions
@@ -114,6 +126,22 @@ async function emitRemote(eventType, data) {
     data,
   };
   await pushAttemptLoop(getIVIScoreUrl('emit'), requestBody);
+}
+
+// pushes emit to the pool shceduling endpoint if part of a pool
+// otherwise performs regular push emit
+async function emitRemotePoolVersion(eventType, data) {
+  if (
+    isEventType(eventType, EventTypes.SUCCESS)
+        || isEventType(eventType, EventTypes.FAIL)
+        || isEventType(eventType, EventTypes.STOP)) {
+    const requestBody = {
+      type: eventType,
+      data,
+    };
+    await pushAttemptLoop(getPoolSchedulingUrl('emit'), requestBody);
+  }
+  await emitRemote(eventType, data);
 }
 
 /**
@@ -170,7 +198,7 @@ async function requestCreateSig(jobId, signalSets, signalsSpec) {
 
 module.exports = {
   runStatusUpdate,
-  emitRemote,
+  emitRemote: (isPoolPeer ? emitRemotePoolVersion : emitRemote),
   getStopEventType,
   getOutputEventType,
   getFailEventType,

@@ -42,7 +42,10 @@ jobRunner:
   machineId: 0
 
   maxJobOutput: 1000000
-  
+  # in case this runner will be used as a pool peer, a scheduling port is used for run termination event emission to speed things up
+  isPoolPeer: false
+  schedulingTrustedPort: 0
+
   workCheckInterval: 5 # seconds
   printLimitReachedMessage: true
   messagePush:
