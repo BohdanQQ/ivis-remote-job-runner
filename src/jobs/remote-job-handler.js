@@ -135,7 +135,7 @@ async function handleRunFail(runId, runData, errMsg) {
     if (finalRun === null) {
       log.error(`Could not push data to IVIS-core, run ${runId} does not exist!`);
     } else {
-      await remotePush.runStatusUpdate(runId, finalRun.runData, finalRun.output, finalRun.errMsg);
+      await remotePush.runStatusUpdate(runId, finalRun.runData, `${errMsg}\n\nLog:\n${finalRun.output}`);
     }
   } catch (err) {
     log.error(err);
@@ -251,7 +251,7 @@ async function handleRun({
     await runs.changeState(runId, RemoteRunState.RUN_FAIL);
     remotePush.runStatusUpdate(runId, {
       status: RemoteRunState.RUN_FAIL,
-    }, '', `Pre-run checks, handler or run manager failed with following error:\n${error}`);
+    }, `Pre-run checks, handler or run manager failed with following error:\n${error}`);
   }
 }
 
@@ -267,7 +267,7 @@ async function handleStop(msg) {
     // runs in queue are not yet in the database and since the run is removed from queue,
     // no double create will occur
     await runs.createRun(rId);
-    const cancelledMsg = 'Run Cancelled\n';
+    const cancelledMsg = 'INFO: Run Cancelled\n';
     return runs.appendErrMessage(rId, cancelledMsg)
       .then(() => runs.changeState(rId, RemoteRunState.RUN_FAIL))
       .then((changeStateResult) => {
@@ -275,12 +275,14 @@ async function handleStop(msg) {
           log.warn('Could not change run state on stop!');
         }
       })
-      .then(() => remotePush.runStatusUpdate(
-        runId,
-        { status: RemoteRunState.RUN_FAIL },
-        '',
-        cancelledMsg,
-      ))
+      .then(async () => {
+        const run = await runs.getRunById(runId);
+        return remotePush.runStatusUpdate(
+          runId,
+          { status: RemoteRunState.RUN_FAIL },
+          `${cancelledMsg}\n\nLog:\n${run ? run.output : ''}`,
+        );
+      })
       .catch((error) => log.error('stop handling error:', error));
   };
   // remove from queue or stop via corresponding handler

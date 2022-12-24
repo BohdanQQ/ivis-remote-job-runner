@@ -199,7 +199,7 @@ function createRunManager(jobId, runId, runOptions) {
       if (finalRun === null) {
         log.error(`Could not push data to IVIS-core, run ${runId} does not exist!`);
       } else {
-        await remotePush.runStatusUpdate(runId, finalRun.runData, finalRun.output, finalRun.errMsg);
+        await remotePush.runStatusUpdate(runId, finalRun.runData, finalRun.output);
       }
     } catch (err) {
       log.error(LOG_ID, err);

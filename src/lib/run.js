@@ -12,7 +12,7 @@ async function updateRun(run, runData) {
       output: out,
     });
     await Promise.all([
-      remotePush.runStatusUpdate(run.run_id, runData, out, run.errMsg),
+      remotePush.runStatusUpdate(run.run_id, runData, out),
       remotePush.emitRemote(remotePush.getFailEventType(run.id), out),
     ]);
   } catch (err) {
