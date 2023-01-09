@@ -72,10 +72,9 @@ async function runStatusUpdate(
   runId,
   status,
   output = undefined,
-  errors = undefined,
 ) {
   const requestBody = {
-    runId, status, output, errors,
+    runId, status, output,
   };
   await pushAttemptLoop(getIVIScoreUrl('status'), requestBody);
 }

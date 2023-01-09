@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 const { taskSubtypeSpecs, PYTHON_JOB_FILE_NAME, defaultPythonLibs } = require('../../shared/tasks');
 const ivisConfig = require('../../lib/config').ivisCore;
 const { log } = require('../../lib/log');
@@ -85,23 +85,46 @@ function buildEnvironment(destDir, subtype, onSuccess, onFail) {
   });
 }
 
+async function extractArchive(archivePath, destinationPath) {
+  const extractCommand = `tar -xf ${archivePath} --directory=${destinationPath}`;
+  log.info(`Extraction Command: ${extractCommand}`);
+  return new Promise((resolve, reject) => {
+    exec(extractCommand)
+      .on('error', (err) => reject(err))
+      .on('exit', (code, signal) => {
+        if (code === 0) {
+          resolve();
+          return;
+        }
+        reject(new Error(`Extraction process exited with code ${code} and signal ${signal}}`));
+      });
+  });
+}
+
+async function extractCode(code, destinationDir) {
+  const archivePath = `${destinationDir}/___archive.tar`;
+
+  await fs.promises.writeFile(archivePath, code.toString());
+  await extractArchive(archivePath, destinationDir);
+  await fs.promises.rm(archivePath);
+}
+
 /**
  * Initialize and build task.
- * @param {{subtype: string, code: string, destDir: string}} config
+ * @param {{subtype: string, codeArchiveBuff: object, destDir: string}} config
  * @param {function} onSuccess  Callback on success
  * @param {function} onFail  Callback on failed attempt
  * @returns {Promise<void>}
  */
 async function init(config, onSuccess, onFail) {
-  const { subtype, code, destDir } = config;
+  const { subtype, codeArchiveBuff, destDir } = config;
   try {
     if (fs.existsSync(destDir)) {
       await fs.promises.rm(destDir, { recursive: true });
     }
     await fs.promises.mkdir(destDir);
 
-    const codeFilePath = path.join(destDir, PYTHON_JOB_FILE_NAME);
-    await fs.promises.writeFile(codeFilePath, code);
+    await extractCode(codeArchiveBuff, destDir);
 
     await buildEnvironment(destDir, subtype, onSuccess, onFail);
   } catch (error) {

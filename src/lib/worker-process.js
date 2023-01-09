@@ -35,7 +35,7 @@ function sendBuildRunBundle(spec) {
       taskId: spec.taskId,
       type: spec.type,
       subtype: spec.subtype,
-      code: spec.code,
+      codeArchive: spec.codeArchive,
       runId: spec.runId,
     },
   };

@@ -89,8 +89,10 @@ async function runStatus(request, response) {
 const RUN_SPEC = {
   taskId: 'int',
   type: 'str',
-  code: 'str',
-  runId: 'int',
+  codeArchive: {
+    type: 'str',
+    data: 'ignore',
+  },
   jobId: 'int',
   params: 'ignore',
   entities: 'ignore',
@@ -105,11 +107,16 @@ async function buildAndRun(request, response) {
     return;
   }
 
-  const runSpec = request.body;
+  const qryRunId = parseInt(request.params.run_id, 10);
+  const runSpec = {
+    ...request.body,
+    runId: qryRunId,
+  };
   if (runSpec.subtype !== undefined && typeof (runSpec.subtype) !== 'string') {
     respondWith(400, response);
     return;
   }
+
   runSpec.subtype = runSpec.subtype || defaultSubtypeKey;
 
   try {

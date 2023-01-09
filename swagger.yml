@@ -130,9 +130,6 @@ components:
         code:
           type: string
           description: The code of the task
-        runId:
-          type: integer
-          description: Run ID to be assigned for the run
         jobId:
           type: integer
           description: "Job ID associated with the run, might be removed later"
