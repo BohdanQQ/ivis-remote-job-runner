@@ -1,6 +1,6 @@
 const { inspect } = require('node:util');
 const { RequestType, EventTypes } = require('../shared/remote-run');
-const { axiosInstance } = require('./httpClient');
+const { axiosInstance } = require('./http-client');
 const config = require('./config');
 const { log } = require('./log');
 

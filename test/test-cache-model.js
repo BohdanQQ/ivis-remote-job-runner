@@ -7,7 +7,7 @@ const {
 const assert = require('assert');
 const knex = require('../src/lib/knex');
 
-const cacheModel = require('../src/models/task_build_cache');
+const cacheModel = require('../src/models/task-build-cache');
 
 describe('build cache tests', () => {
   before(async () => {

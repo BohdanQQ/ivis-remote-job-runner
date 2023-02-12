@@ -1,5 +1,5 @@
 const knex = require('./knex');
-const remotePush = require('./remotePush');
+const remotePush = require('./remote-push');
 const { RemoteRunState } = require('../shared/remote-run');
 const { log } = require('./log');
 

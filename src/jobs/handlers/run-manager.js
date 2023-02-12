@@ -3,7 +3,7 @@ const { JobMsgType, STATE_FIELD } = require('../../shared/tasks');
 const { RemoteRunState } = require('../../shared/remote-run');
 const { log } = require('../../lib/log');
 const runs = require('../../models/run');
-const remotePush = require('../../lib/remotePush');
+const remotePush = require('../../lib/remote-push');
 
 const LOG_ID = 'Task-handler';
 

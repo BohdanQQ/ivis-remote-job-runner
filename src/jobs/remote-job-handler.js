@@ -7,9 +7,9 @@ const pythonHandler = require('./handlers/python');
 const { createRunManager } = require('./handlers/run-manager');
 const {
   updateBuildCache, isBuildCached, invalidateBuildCache,
-} = require('../models/task_build_cache');
-const remotePush = require('../lib/remotePush');
-const { certPaths } = require('../lib/httpClient');
+} = require('../models/task-build-cache');
+const remotePush = require('../lib/remote-push');
+const { certPaths } = require('../lib/http-client');
 
 let isWorking = false;
 const workQueue = [];
