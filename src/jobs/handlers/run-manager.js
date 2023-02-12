@@ -82,32 +82,32 @@ async function handleRequest(jobId, requestStr) {
 
   try {
     switch (request.type) {
-      // here we only forward the requests to IVIS-core
-      case JobMsgType.CREATE_SIGNALS:
-        if (request.signalSets || request.signals) {
-          const reqResult = await remotePush.requestCreateSig(jobId, request.signalSets, request.signals);
-          response = {
-            ...response,
-            ...reqResult,
-          };
-        } else {
-          response.error = 'Either signalSets or signals have to be specified';
-        }
-        break;
-      case JobMsgType.STORE_STATE:
-        if (request[STATE_FIELD]) {
-          const reqResult = await remotePush.requestStoreState(jobId, request);
-          response = {
-            ...response,
-            ...reqResult,
-          };
-        } else {
-          response.error = `${STATE_FIELD} not specified`;
-        }
-        break;
-      default:
-        response.error = `Type ${request.type} not recognized`;
-        break;
+    // here we only forward the requests to IVIS-core
+    case JobMsgType.CREATE_SIGNALS:
+      if (request.signalSets || request.signals) {
+        const reqResult = await remotePush.requestCreateSig(jobId, request.signalSets, request.signals);
+        response = {
+          ...response,
+          ...reqResult,
+        };
+      } else {
+        response.error = 'Either signalSets or signals have to be specified';
+      }
+      break;
+    case JobMsgType.STORE_STATE:
+      if (request[STATE_FIELD]) {
+        const reqResult = await remotePush.requestStoreState(jobId, request);
+        response = {
+          ...response,
+          ...reqResult,
+        };
+      } else {
+        response.error = `${STATE_FIELD} not specified`;
+      }
+      break;
+    default:
+      response.error = `Type ${request.type} not recognized`;
+      break;
     }
   } catch (error) {
     log.warn(LOG_ID, error);
@@ -209,52 +209,52 @@ function createRunManager(jobId, runId, runOptions) {
 
   async function onRunEvent(type, data) {
     switch (type) {
-      case 'output':
-        try {
-          if (!limitReached) {
-            const byteLength = Buffer.byteLength(data, 'utf8');
-            outputBytes += byteLength;
+    case 'output':
+      try {
+        if (!limitReached) {
+          const byteLength = Buffer.byteLength(data, 'utf8');
+          outputBytes += byteLength;
 
-            if (outputBytes >= maxOutput) {
-              limitReached = true;
-              if (config.jobRunner.printLimitReachedMessage === true) {
-                try {
-                  await runs.appendOutput(runId, 'INFO: max output storage capacity reached\n');
-                  const maxMsg = 'INFO: max output capacity reached';
-                  if (!timer) {
-                    // didn't see an issue with NOT awaiting this...
-                    remotePush.emitRemote(remotePush.getOutputEventType(runId), maxMsg);
-                  } else {
-                    outputBuffer.push(maxMsg);
-                  }
-                } catch (e) {
-                  log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
+          if (outputBytes >= maxOutput) {
+            limitReached = true;
+            if (config.jobRunner.printLimitReachedMessage === true) {
+              try {
+                await runs.appendOutput(runId, 'INFO: max output storage capacity reached\n');
+                const maxMsg = 'INFO: max output capacity reached';
+                if (!timer) {
+                  // didn't see an issue with NOT awaiting this...
+                  remotePush.emitRemote(remotePush.getOutputEventType(runId), maxMsg);
+                } else {
+                  outputBuffer.push(maxMsg);
                 }
+              } catch (e) {
+                log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
               }
-            } else {
-              outputBuffer.push(data);
-              /* Note:
+            }
+          } else {
+            outputBuffer.push(data);
+            /* Note:
               this (timer reset, cleanbuffer after 1s) is here to limit the amount of DB
               interactions when there is a rapid output generation
               */
-              // TODO Don't know how well this will scale
-              // --   it might be better to append to a file, but this will require further syncing
-              // --   as we need full output for task development in the UI, not only output after
-              // --   the register of listener therefore keeping it this way for now
-              if (!timer) {
-                timer = setTimeout(cleanBuffer, 1000);
-              }
+            // TODO Don't know how well this will scale
+            // --   it might be better to append to a file, but this will require further syncing
+            // --   as we need full output for task development in the UI, not only output after
+            // --   the register of listener therefore keeping it this way for now
+            if (!timer) {
+              timer = setTimeout(cleanBuffer, 1000);
             }
           }
-        } catch (e) {
-          log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
         }
-        break;
-      case 'request':
-        return handleRequest(jobId, data);
-      default:
-        log.warn(LOG_ID, `Job ${jobId} run ${runId}: unknown event ${type} `);
-        break;
+      } catch (e) {
+        log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
+      }
+      break;
+    case 'request':
+      return handleRequest(jobId, data);
+    default:
+      log.warn(LOG_ID, `Job ${jobId} run ${runId}: unknown event ${type} `);
+      break;
     }
     // only request type is supposed to return something (which it does)
     return null;

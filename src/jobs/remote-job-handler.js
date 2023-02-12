@@ -314,23 +314,23 @@ async function startWork() {
     const { type } = event;
     try {
       switch (type) {
-        case HandlerMsgType.BUILD:
-          // the entire build blocks the loop
-          // this is to prevent multiple builds for the same task (but a different job)
-          // to race each other
-          // eslint-disable-next-line no-await-in-loop
-          await handleBuild(event);
-          break;
-        case HandlerMsgType.RUN:
-          // run does not block the loop for the entirety of its runtime
-          // here we expect that a rebuild of a task T while a job
-          // of a task T is running is incorrect
-          // eslint-disable-next-line no-await-in-loop
-          await handleRun(event);
-          break;
-        default:
-          log.error(`Unknown event type ${type} of event: ${event}`);
-          break;
+      case HandlerMsgType.BUILD:
+        // the entire build blocks the loop
+        // this is to prevent multiple builds for the same task (but a different job)
+        // to race each other
+        // eslint-disable-next-line no-await-in-loop
+        await handleBuild(event);
+        break;
+      case HandlerMsgType.RUN:
+        // run does not block the loop for the entirety of its runtime
+        // here we expect that a rebuild of a task T while a job
+        // of a task T is running is incorrect
+        // eslint-disable-next-line no-await-in-loop
+        await handleRun(event);
+        break;
+      default:
+        log.error(`Unknown event type ${type} of event: ${event}`);
+        break;
       }
     } catch (err) {
       log.error(err);
@@ -356,17 +356,17 @@ async function scheduleEvent(event) {
 
   try {
     switch (event.type) {
-      case HandlerMsgType.BUILD: workQueue.push(event); break;
-      case HandlerMsgType.STOP: await handleStop(event); break;
-      case HandlerMsgType.RUN: {
-        await runs.createRun(event.spec.runId);
-        // around this point, a build for a different code can be enqueued
-        // before this run event is pushed -> run will be executed using different
-        // source code (thus scheduleBuildRunBundle)
-        workQueue.push(event);
-        break;
-      }
-      default: log.log(`Unknown event type ${event.type}`); return;
+    case HandlerMsgType.BUILD: workQueue.push(event); break;
+    case HandlerMsgType.STOP: await handleStop(event); break;
+    case HandlerMsgType.RUN: {
+      await runs.createRun(event.spec.runId);
+      // around this point, a build for a different code can be enqueued
+      // before this run event is pushed -> run will be executed using different
+      // source code (thus scheduleBuildRunBundle)
+      workQueue.push(event);
+      break;
+    }
+    default: log.log(`Unknown event type ${event.type}`); return;
     }
   } catch (err) {
     log.error(err);
