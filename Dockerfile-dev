@@ -3,8 +3,8 @@ FROM node:16-alpine
 # installs development toolchain & libraries in order to build the sqlite package
 # on the ARM architecture 
 RUN apk add --no-cache python3 py3-pip bash curl make gcc libc-dev g++
-# ARM sqlite build executes "python", not "python3"
-RUN ln -s /usr/bin/python3 /usr/bin/python
+# ARM sqlite build executes "python", not "python3", sometimes python does not exist
+RUN [ -e /usr/bin/python ] || ln -s /usr/bin/python3 /usr/bin/python
 
 WORKDIR /opt/ivis-remote
 
