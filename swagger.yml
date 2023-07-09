@@ -104,7 +104,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMsg'
-
+  '/task/{task_id}':
+    delete:
+      summary: Irrevertibly delete a task 
+      operationId: deleteTask
+      parameters:
+        - in: path
+          name: task_id
+          description: Task ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success, will be removed
+        '400':
+          description: Invalid Request
+        '503':
+          description: The task could not be deleted 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMsg'
 components:
   requestBodies:
     JobRun:

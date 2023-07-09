@@ -2,7 +2,11 @@ const { fork } = require('child_process');
 const { HandlerMsgType } = require('../shared/remote-run');
 
 const workerSource = './src/jobs/remote-job-handler.js';
-const workerProcess = fork(workerSource);
+let workerProcess;
+
+function init() {
+    workerProcess = fork(workerSource);
+}
 
 /**
  * Sends a message to the worker process, rejecting on error
@@ -57,8 +61,19 @@ function sendBuildRunBundle(spec) {
   promiseSend([buildMsg, runMsg]);
 }
 
+function sendTaskRemoveMessage(taskId) {
+    promiseSend({
+        type: HandlerMsgType.TASK_DELETE,
+        spec: {
+            taskId
+        }
+    });
+}
+
 module.exports = {
   process: workerProcess,
   sendStop,
   sendBuildRunBundle,
+  sendTaskRemoveMessage,
+  init,
 };
