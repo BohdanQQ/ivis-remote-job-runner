@@ -349,8 +349,6 @@ async function startWork() {
         // eslint-disable-next-line no-await-in-loop
         await handleRun(event);
         break;
-      case HandlerMsgType.TASK_DELETE:
-        await handleTaskDelete(event);
       default:
         log.error(`Unknown event type ${type} of event: ${event}`);
         break;
@@ -389,6 +387,7 @@ async function scheduleEvent(event) {
       workQueue.push(event);
       break;
     }
+    case HandlerMsgType.TASK_DELETE: handleTaskDelete(event); break;
     default: log.log(`Unknown event type ${event.type}`); return;
     }
   } catch (err) {

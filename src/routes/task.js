@@ -17,6 +17,8 @@ function deleteTask(request, response) {
             error: `${ex}`,
         });
     }
+    response.status(200);
+    response.send('');
     return;
 }
 
