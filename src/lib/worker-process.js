@@ -61,7 +61,7 @@ function sendBuildRunBundle(spec) {
   promiseSend([buildMsg, runMsg]);
 }
 
-function sendTaskRemoveMessage(taskId) {
+function sendTaskRemove(taskId) {
     promiseSend({
         type: HandlerMsgType.TASK_DELETE,
         spec: {
@@ -74,6 +74,6 @@ module.exports = {
   process: workerProcess,
   sendStop,
   sendBuildRunBundle,
-  sendTaskRemoveMessage,
+  sendTaskRemove,
   init,
 };
