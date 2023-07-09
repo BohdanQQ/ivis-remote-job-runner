@@ -325,7 +325,7 @@ async function handleStop(msg) {
 async function handleTaskDelete({ spec: { taskId }}) {
     const toDelete = getTaskDirectory(taskId);
     if (fs.existsSync(toDelete)) {
-        await fs.promises.rmdir(getTaskDirectory(taskId));
+        await fs.rm(getTaskDirectory(taskId), {recursive: true});
     }
 }
 
