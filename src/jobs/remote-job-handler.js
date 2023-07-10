@@ -323,6 +323,7 @@ async function handleStop(msg) {
  * @returns {Promise<void>}
  */
 async function handleTaskDelete({ spec: { taskId }}) {
+    await invalidateBuildCache(taskId);
     const toDelete = getTaskDirectory(taskId);
     if (fs.existsSync(toDelete)) {
         await fs.rm(getTaskDirectory(taskId), {recursive: true}, (err) => {});
