@@ -17,10 +17,11 @@ services:
     build:
       context: ./
       dockerfile: ./Dockerfile
-    volumes:
+    # volumes
     # database directory
-      - ./data:/opt/ivis-remote/data
     # job files, builds
-      - ./files:/opt/ivis-remote/files
+    volumes:
+      - ./data:/opt/ivis-remote/data 
+      - ./files:/opt/ivis-remote/files 
       - ./config/default.yml:/opt/ivis-remote/config/default.yml
       - ./cert:/opt/ivis-remote/cert

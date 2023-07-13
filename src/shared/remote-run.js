@@ -9,6 +9,7 @@ const HandlerMsgType = {
   BUILD: 0,
   RUN: 1,
   STOP: 2,
+  TASK_DELETE: 3,
 };
 
 const RequestType = {

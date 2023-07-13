@@ -1,4 +1,5 @@
 const { log } = require('../lib/log');
+const fs = require('fs');
 const runs = require('../models/run');
 const { RemoteRunState, HandlerMsgType } = require('../shared/remote-run');
 const config = require('../lib/config');
@@ -84,6 +85,14 @@ function getBuildPromise(type, subtype, codeArchiveBuff, destDir, runId, taskId)
   }));
 }
 
+
+/**
+ * @param {string} taskId
+ */
+function getTaskDirectory(taskId) {
+    return `${BUILD_DIR_PATH}/${taskId}`;
+}
+
 /**
  * Performs a cache-checked build.
  * @param {object} build message
@@ -107,7 +116,7 @@ async function handleBuild({
     });
     return;
   }
-  await getBuildPromise(type, subtype, codeBuff, `${BUILD_DIR_PATH}/${taskId}`, runId, taskId);
+  await getBuildPromise(type, subtype, codeBuff, getTaskDirectory(taskId), runId, taskId);
 }
 
 /**
@@ -308,6 +317,19 @@ async function handleStop(msg) {
   }
 }
 
+/**
+ * Try to delete a task.
+ * @param msg
+ * @returns {Promise<void>}
+ */
+async function handleTaskDelete({ spec: { taskId }}) {
+    await invalidateBuildCache(taskId);
+    const toDelete = getTaskDirectory(taskId);
+    if (fs.existsSync(toDelete)) {
+        await fs.rm(getTaskDirectory(taskId), {recursive: true}, (err) => {});
+    }
+}
+
 async function startWork() {
   while (workQueue.length > 0) {
     const event = workQueue.shift();
@@ -366,6 +388,7 @@ async function scheduleEvent(event) {
       workQueue.push(event);
       break;
     }
+    case HandlerMsgType.TASK_DELETE: handleTaskDelete(event); break;
     default: log.log(`Unknown event type ${event.type}`); return;
     }
   } catch (err) {

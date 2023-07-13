@@ -2,10 +2,13 @@ const config = require('./lib/config');
 const appBuild = require('./app-build');
 const { log } = require('./lib/log');
 const runInit = require('./lib/run').init;
+const initWorker = require('./lib/worker-process').init
 
 async function main() {
   log.log('Reseting runs');
   await runInit();
+  log.log('Starting Task Handler');
+  await initWorker();
   const app = appBuild();
 
   const host = '0.0.0.0';
