@@ -10,7 +10,7 @@ function deleteTask(request, response) {
 
     const taskId = parseInt(request.params.task_id, 10);
     try {
-        sendTaskRemove(taskId)
+        sendTaskRemove(taskId);
     } catch (ex) {
         response.status(503);
         response.json({
